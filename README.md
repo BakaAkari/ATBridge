@@ -1,3 +1,4 @@
+Chinese:
 Quixel Bridge官方插件长时间不更新
 一怒之下动手修改
 
@@ -12,3 +13,12 @@ Quixel Bridge官方插件长时间不更新
 
 已知BUG：
     3D模型导入的材质贴图有问题
+
+English:
+1.Install the plugin using the blender script installer, then close blender
+2.Open the quixel bridge, open the export settings,
+    Export Target：Custom Socket 
+    Socket Port：23333
+3.Close Quixel Bridge
+4.First open Blender, then open Quixel Bridge software
+5.Click on the output button for the asset and blender will receive the correct asset
