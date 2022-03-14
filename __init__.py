@@ -10,7 +10,7 @@
 # don't hesitate to send us some feedback if you've done something cool with it.
 #
 # ##### QUIXEL AB - MEGASCANS PLUGIN FOR BLENDER #####
-
+from unicodedata import name
 import bpy, threading, os, time, json, socket
 from bpy.app.handlers import persistent
 
@@ -22,7 +22,7 @@ globals()['MG_AlembicPath'] = []
 globals()['MG_ImportComplete'] = False
 
 bl_info = {
-    "name": "Fix Megascans Plugin",
+    "name": "Fix Megascans Plugin", 
     "description": "Connects Blender to Quixel Bridge for one-click imports with shader setup and geometry",
     "author": "Quixel",
     "version": (3, 5, 5),
@@ -35,6 +35,64 @@ bl_info = {
     "category": "Import-Export"
 }
 
+class FixBridgeToolsPanel(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_FixBridgeTools"
+    bl_label = "Fix Bridge Tools"
+    bl_category = "Tool"
+    bl_space_type = "NODE_EDITOR"
+    bl_region_type = "UI"
+    bl_order = 15
+    bl_options = {'DEFAULT_CLOSED'}
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.operator('object.changeprojection')
+        layout.operator('object.evdisplacement')
+    
+class ChangeProjectionOperator(bpy.types.Operator):
+    bl_idname = "object.changeprojection"
+    bl_label = "切换贴图映射方式"
+
+    def execute(self, context):
+        actobj = bpy.context.active_object
+        actmat = actobj.active_material
+        links = bpy.data.materials[actmat.name].node_tree.links
+        for node in  actmat.node_tree.nodes:
+            if node.type == "TEX_COORD":
+                texcoordnode = node
+            if node.type == "MAPPING":
+                texmapping = node
+            if node.type == "TEX_IMAGE":
+                if node.projection == "BOX":
+                    node.projection = "FLAT"
+                    links.new(texcoordnode.outputs["UV"],texmapping.inputs["Vector"])
+                elif node.projection == "FLAT":
+                    node.projection = "BOX"
+                    links.new(texcoordnode.outputs["Object"],texmapping.inputs["Vector"])
+        return {'FINISHED'}
+
+class EVDisplacementOperator(bpy.types.Operator):
+    bl_idname = "object.evdisplacement"
+    bl_label = "实验性：创建eevee置换"
+
+    def execute(self, context):
+        actobj = bpy.context.active_object
+        actmat = actobj.active_material
+
+        for node in actmat.node_tree.nodes:
+            if node.type == "TEX_IMAGE":
+                if 'Displacement' in node.image.name:
+                    disptex = node.image
+                    print(disptex)
+
+
+        bpy.data.textures.new(type='IMAGE',name='displacement')
+        subd = actobj.modifiers.new(type='SUBSURF',name='subdivision')
+        subd.levels = 4
+
+        disp = actobj.modifiers.new(type='DISPLACE',name='Displacement')
+        
+        return {'FINISHED'}
 
 # MS_Init_ImportProcess is the main asset import class.
 # This class is invoked whenever a new asset is set from Bridge.
@@ -274,14 +332,16 @@ class MS_Init_ImportProcess():
 
     #Shader setups for all asset types. Some type specific functionality is also handled here.
     def SetupMaterial (self):
-        print(self.assetType)
+        print(self.textureTypes)
         if "albedo" in self.textureTypes:
             if "ao" in self.textureTypes:
                 self.CreateTextureMultiplyNode("albedo", "ao", -250, 320, -640, 460, -640, 200, 0, 1, True, 0)
                 self.TexCount += 2
+                # print("have AO")
             else:
                 self.CreateTextureNode("albedo", -640, 460, 0, True, 0)
                 self.TexCount += 1
+                # print("have color")
         
         if self.isSpecularWorkflow:
             if "specular" in self.textureTypes:
@@ -493,6 +553,7 @@ class MS_Init_ImportProcess():
 
         if self.DisplacementSetup == "regular":
             pass        
+        # print(self.TexCount)
 
     def ConnectNodeToMaterial(self, materialInputIndex, textureNode):
         self.mat.node_tree.links.new(self.nodes.get(self.parentName).inputs[materialInputIndex], textureNode.outputs[0])
@@ -693,13 +754,11 @@ def menu_func_import(self, context):
     self.layout.operator(MS_Init_Abc.bl_idname, text="Megascans: Import Alembic Files")
 
 classes = (
-    # MS_Init_ImportProcess,
-    # ms_Init,
-    # thread_checker,
     MS_Init_LiveLink,
     MS_Init_Abc,
-    # load_plugin,
-    # menu_func_import
+    FixBridgeToolsPanel,
+    ChangeProjectionOperator,
+    EVDisplacementOperator
 )
 
 def register():
