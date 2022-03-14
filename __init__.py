@@ -424,6 +424,8 @@ class MS_Init_ImportProcess():
                 self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[3])
             if self.assetType == "3d":
                 self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[2])
+            if self.assetType == "atlas":
+                self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[2])
 
     def CreateTextureNode(self, textureType, PosX, PosY, colorspace = 1, connectToMaterial = False, materialInputIndex = 0):
         texturePath = self.GetTexturePath(textureType)
