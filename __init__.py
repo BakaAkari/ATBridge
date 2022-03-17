@@ -47,7 +47,7 @@ class FixBridgeToolsPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         layout.operator('object.changeprojection')
-        layout.operator('object.evdisplacement')
+        # layout.operator('object.evdisplacement')
     
 class ChangeProjectionOperator(bpy.types.Operator):
     bl_idname = "object.changeprojection"
@@ -73,25 +73,25 @@ class ChangeProjectionOperator(bpy.types.Operator):
 
 class EVDisplacementOperator(bpy.types.Operator):
     bl_idname = "object.evdisplacement"
-    bl_label = "实验性：创建eevee置换"
+    bl_label = "实验性：创建eevee视差"
 
     def execute(self, context):
         actobj = bpy.context.active_object
         actmat = actobj.active_material
 
-        for node in actmat.node_tree.nodes:
-            if node.type == "TEX_IMAGE":
-                if 'Displacement' in node.image.name:
-                    disptex = node.image
-                    print(disptex)
+        vectorgroup = bpy.data.node_groups.new('Vector Group', 'ShaderNodeTree')
+        group_inputs = vectorgroup.nodes.new('NodeGroupInput')
+        group_inputs.location = (-350,0)
+        vectorgroup.inputs.new('NodeSocketFloat','in_to_greater')
 
+        # create group outputs
+        group_outputs = vectorgroup.nodes.new('NodeGroupOutput')
+        group_outputs.location = (300,0)
+        vectorgroup.outputs.new('NodeSocketVector','out_result')
 
-        bpy.data.textures.new(type='IMAGE',name='displacement')
-        subd = actobj.modifiers.new(type='SUBSURF',name='subdivision')
-        subd.levels = 4
-
-        disp = actobj.modifiers.new(type='DISPLACE',name='Displacement')
-        
+        nodegroup = actmat.node_tree.nodes.new('ShaderNodeGroup', 'Parallex Vector')
+        nodegroup.node_tree = vectorgroup
+        nodegroup.location = (-1300, 0)
         return {'FINISHED'}
 
 # MS_Init_ImportProcess is the main asset import class.
@@ -417,15 +417,19 @@ class MS_Init_ImportProcess():
             # Create mapping node.
             self.mappingNode = self.CreateGenericNode("ShaderNodeMapping", -1950, 0)
             self.mappingNode.vector_type = 'TEXTURE'
+            self.reroute = self.CreateGenericNode("NodeReroute",-1200,0)
             # Create texture coordinate node.
             texCoordNode = self.CreateGenericNode("ShaderNodeTexCoord", -2150, -200)
             # Connect texCoordNode to the mappingNode
             if self.assetType == "surface":
                 self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[3])
+                self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
             if self.assetType == "3d":
                 self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[2])
+                self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
             if self.assetType == "atlas":
                 self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[2])
+                self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
 
     def CreateTextureNode(self, textureType, PosX, PosY, colorspace = 1, connectToMaterial = False, materialInputIndex = 0):
         texturePath = self.GetTexturePath(textureType)
@@ -446,7 +450,7 @@ class MS_Init_ImportProcess():
             self.ConnectNodeToMaterial(materialInputIndex, textureNode)
         # If it is Cycles render we connect it to the mapping node.
         if self.assetType not in ["3d", "3dplant"]:
-            self.mat.node_tree.links.new(textureNode.inputs[0], self.mappingNode.outputs[0])
+            self.mat.node_tree.links.new(textureNode.inputs[0], self.reroute.outputs[0])
         return textureNode
 
     def CreateTextureMultiplyNode(self, aTextureType, bTextureType, PosX, PosY, aPosX, aPosY, bPosX, bPosY, aColorspace, bColorspace, connectToMaterial, materialInputIndex):
