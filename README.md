@@ -1,4 +1,14 @@
+<!--
+ * @Author: your name
+ * @Date: 2022-04-30 00:37:03
+ * @LastEditTime: 2022-04-30 00:39:23
+ * @LastEditors: Please set LastEditors
+ * @Description: 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ * @FilePath: \Fix_Quixel_Bridge_Addon-1\README.md
+-->
 ![images](https://github.com/BakaAkari/Images_lib/blob/main/baka-akari-untitled.jpg)
+![Image text](https://gitee.com/baka-akari/images_lib/blob/main/baka-akari-untitled.jpg)
+
 Chinese:
 Quixel Bridge官方插件长时间不更新
 一怒之下动手修改
@@ -20,6 +30,8 @@ Tip:
 
 
 English:
+Video:https://www.youtube.com/watch?v=Y-Ovx6-XvVY
+
 1.Install the plugin using the blender script installer, then close blender
 
 2.Open the quixel bridge, open the export settings,
