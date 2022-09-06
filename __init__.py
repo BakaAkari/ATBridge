@@ -56,24 +56,32 @@ class ChangeProjectionOperator(bpy.types.Operator):
     def execute(self, context):
         actobj = bpy.context.active_object
         actmat = actobj.active_material
+        texcoordnode = None
+        texmapping = None
         links = bpy.data.materials[actmat.name].node_tree.links
-        for node in  actmat.node_tree.nodes:
+        for node in actmat.node_tree.nodes:
             if node.type == "TEX_COORD":
                 texcoordnode = node
             if node.type == "MAPPING":
                 texmapping = node
             if node.type == "TEX_IMAGE":
                 if node.projection == "BOX":
-                    node.projection = "FLAT"
-                    links.new(texcoordnode.outputs["UV"],texmapping.inputs["Vector"])
+                    imgprojection = 'BOX'
                 elif node.projection == "FLAT":
-                    node.projection = "BOX"
-                    links.new(texcoordnode.outputs["Object"],texmapping.inputs["Vector"])
+                    imgprojection = 'FLAT'
+        
+        for node in actmat.node_tree.nodes:
+            if node.type == "TEX_IMAGE" and imgprojection == 'BOX':
+                node.projection = "FLAT"
+                links.new(texcoordnode.outputs["UV"],texmapping.inputs["Vector"])
+            if node.type == "TEX_IMAGE" and imgprojection == 'FLAT':
+                node.projection = "BOX"
+                links.new(texcoordnode.outputs["Object"],texmapping.inputs["Vector"])
         return {'FINISHED'}
 
 class EVDisplacementOperator(bpy.types.Operator):
     bl_idname = "object.evdisplacement"
-    bl_label = "实验性：创建eevee视差"
+    bl_label = "实验性:创建eevee视差"
 
     def execute(self, context):
         actobj = bpy.context.active_object
@@ -772,10 +780,10 @@ def register():
     for cls in classes:
         register_class(cls)
 
-    if len(bpy.app.handlers.load_post) > 0:
-        # Check if trying to register twice.
-        if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
-            return
+    # if len(bpy.app.handlers.load_post) > 0:
+    #     # Check if trying to register twice.
+    #     if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
+    #         return
     # bpy.utils.register_class(MS_Init_LiveLink)
     # bpy.utils.register_class(MS_Init_Abc)
     bpy.app.handlers.load_post.append(load_plugin)
@@ -786,8 +794,8 @@ def unregister():
     for cls in reversed(classes):
         unregister_class(cls)
 
-    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
-    if len(bpy.app.handlers.load_post) > 0:
-        # Check if trying to register twice.
-        if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
-            bpy.app.handlers.load_post.remove(load_plugin)
+    # bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    # if len(bpy.app.handlers.load_post) > 0:
+    #     # Check if trying to register twice.
+    #     if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
+    #         bpy.app.handlers.load_post.remove(load_plugin)
