@@ -54,9 +54,6 @@ class ChangeProjectionOperator(bpy.types.Operator):
     bl_label = "切换贴图映射方式"
 
     def execute(self, context):
-        texcoordnode = None
-        texmapping = None
-        imgprojection = None
         actobj = bpy.context.active_object
         actmat = actobj.active_material
         texcoordnode = None
@@ -74,22 +71,12 @@ class ChangeProjectionOperator(bpy.types.Operator):
                     imgprojection = 'FLAT'
         
         for node in actmat.node_tree.nodes:
-<<<<<<< HEAD
             if node.type == "TEX_IMAGE" and imgprojection == 'BOX':
                 node.projection = "FLAT"
                 links.new(texcoordnode.outputs["UV"],texmapping.inputs["Vector"])
             if node.type == "TEX_IMAGE" and imgprojection == 'FLAT':
                 node.projection = "BOX"
                 links.new(texcoordnode.outputs["Object"],texmapping.inputs["Vector"])
-=======
-            if imgprojection == 'BOX':
-                node.projection = "FLAT"
-                links.new(texcoordnode.outputs["UV"],texmapping.inputs["Vector"])
-            if imgprojection == 'FLAT':
-                node.projection = "BOX"
-                links.new(texcoordnode.outputs["Object"],texmapping.inputs["Vector"])
-
->>>>>>> 246a6de844050e25d964a31bf35b57cf2fa42f7f
         return {'FINISHED'}
 
 class EVDisplacementOperator(bpy.types.Operator):
