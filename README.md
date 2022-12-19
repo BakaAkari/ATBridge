@@ -6,14 +6,12 @@
  * @Description: 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  * @FilePath: \Fix_Quixel_Bridge_Addon-1\README.md
 -->
-![images](https://github.com/BakaAkari/Images_lib/blob/main/baka-akari-untitled.jpg)
-![Image text](https://gitee.com/baka-akari/images_lib/blob/main/baka-akari-untitled.jpg)
 
 Chinese:
 Quixel Bridge官方插件长时间不更新
 一怒之下动手修改
 
-使用方式：https://weibo.com/5361597303/LiGi5wKUJ 见视频
+使用方式：https://www.bilibili.com/video/BV1K14y1K73G/ 见视频
 
 文字版：
     blender安装插件，关闭blender，bridge导出设置选择Custom Socket Export，端口号为23333，然后重启bridge，再打开blender
@@ -28,6 +26,10 @@ Tip:
 
     3D模型导入前，Bridge导出设置不能选择highpoly source为导出项，此项会导致输出贴图索引不完整，建议使用LOD 0
 
+Changelist:
+        添加一键EEVEE/Cycles最佳渲染参数按钮
+        添加一键Cycles自适应细分功能
+        添加Tiling Scale滑块
 
 English:
 Video:https://www.youtube.com/watch?v=Y-Ovx6-XvVY
@@ -47,3 +49,9 @@ Video:https://www.youtube.com/watch?v=Y-Ovx6-XvVY
 Tip：
 
     Before importing the 3D model, Bridge export settings cannot select highpoly source as the export item, this item will lead to incomplete output map index, it is recommended to use LOD 0
+
+Changelist:
+        Add one-click EEVEE/Cycles best rendering parameters button
+        Add one-click Cycles adaptive subdivision
+        Add Tiling Scale slider
+
