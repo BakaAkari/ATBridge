@@ -24,7 +24,7 @@ globals()['MG_ImportComplete'] = False
 bl_info = {
     "name": "Fix Megascans Plugin", 
     "description": "Connects Blender to Quixel Bridge for one-click imports with shader setup and geometry",
-    "author": "Quixel",
+    "author": "Akari",
     "version": (3, 8, 0),
     "blender": (4, 0, 0),
     "location": "File > Import",
@@ -43,6 +43,7 @@ class FixBridgeToolsPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_order = 15
     # bl_options = {'DEFAULT_CLOSED'}
+    
     def draw(self, context):
         act_obj: bpy.types.Object
 
