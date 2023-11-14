@@ -43,7 +43,6 @@ class FixBridgeToolsPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_order = 15
     # bl_options = {'DEFAULT_CLOSED'}
-
     def draw(self, context):
         act_obj: bpy.types.Object
 
@@ -940,7 +939,6 @@ def unregister():
     from bpy.utils import unregister_class
     for cls in reversed(classes):
         unregister_class(cls)
-
 
     # bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     # if len(bpy.app.handlers.load_post) > 0:
