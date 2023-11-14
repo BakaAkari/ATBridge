@@ -25,8 +25,8 @@ bl_info = {
     "name": "Fix Megascans Plugin", 
     "description": "Connects Blender to Quixel Bridge for one-click imports with shader setup and geometry",
     "author": "Quixel",
-    "version": (3, 5, 9),
-    "blender": (3, 0, 0),
+    "version": (3, 8, 0),
+    "blender": (4, 0, 0),
     "location": "File > Import",
     "warning": "", # used for warning icon and text in addons panel
     "wiki_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart.html",
@@ -38,61 +38,190 @@ bl_info = {
 class FixBridgeToolsPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_FixBridgeTools"
     bl_label = "Fix Bridge Tools"
-    bl_category = "Tool"
+    bl_category = "View"
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI"
     bl_order = 15
-    bl_options = {'DEFAULT_CLOSED'}
-    
+    # bl_options = {'DEFAULT_CLOSED'}
+
     def draw(self, context):
+        act_obj: bpy.types.Object
+
         layout = self.layout
+        act_obj = bpy.context.active_object
+        nodes = None
+        if act_obj.active_material:
+            nodes = act_obj.active_material.node_tree.nodes
+
+        render_op_box = layout.box()
+        render_op_row = render_op_box.row()
+        render_op_row.operator('object.optievrender', text="EEVEE Best")
+        render_op_row.operator('object.opticyrender', text="Cycles Best")
+
         layout.operator('object.changeprojection')
-        # layout.operator('object.evdisplacement')
-    
+        layout.operator('object.addsubd', text="Turn on adaptive subdivision")
+        # layout.operator('object.testop', text="测试按钮")
+
+        try:
+            if act_obj.active_material and nodes['Value']:
+                layout.prop(nodes['Value'].outputs[0], "default_value", text = 'Tiling Scale')
+        except:
+            pass
+
+
+class TestOperator(bpy.types.Operator):
+    bl_idname = "object.testop"
+    bl_label = "测试按钮"
+
+    def execute(self, context):
+        act_obj = bpy.context.active_object
+        print(act_obj.active_material)
+        return {'FINISHED'}
+
+class OptiEVRenderOperator(bpy.types.Operator):
+    bl_idname = "object.optievrender"
+    bl_label = "最优EV设置"
+
+    def execute(self, context):
+        actobj: bpy.types.Object
+
+        actobj = bpy.context.active_object
+        actmat = actobj.active_material
+        act_scene = bpy.context.window.scene
+        # 设置eevee参数
+        bpy.context.scene.render.engine = 'BLENDER_EEVEE'
+        # 设置渲染参数
+        bpy.data.scenes[act_scene.name].eevee.taa_samples = 0
+        bpy.data.scenes[act_scene.name].eevee.taa_render_samples = 512
+        #AO
+        bpy.context.scene.eevee.use_gtao = True
+        bpy.context.scene.eevee.gtao_quality = 1
+        #辉光
+        bpy.context.scene.eevee.use_bloom = True
+        #景深
+        bpy.context.scene.eevee.use_bokeh_high_quality_slight_defocus = True
+        bpy.context.scene.eevee.use_bokeh_jittered = True
+        #屏幕空间反射
+        bpy.context.scene.eevee.use_ssr = True
+        #体积
+        bpy.context.scene.eevee.volumetric_tile_size = '4'
+        bpy.context.scene.eevee.volumetric_sample_distribution = 1
+        bpy.context.scene.eevee.use_volumetric_shadows = True
+        bpy.context.scene.eevee.volumetric_shadow_samples = 64
+        #阴影
+        bpy.context.scene.eevee.shadow_cube_size = '2048'
+        bpy.context.scene.eevee.shadow_cascade_size = '2048'
+        bpy.context.scene.eevee.use_shadow_high_bitdepth = True
+        #高品质法线
+        bpy.context.scene.render.use_high_quality_normals = True
+        #色彩管理
+        bpy.context.scene.view_settings.look = 'AgX - High Contrast'
+        bpy.context.scene.render.image_settings.compression = 0
+
+        return {'FINISHED'}
+
+class OptiCYRenderOperator(bpy.types.Operator):
+    bl_idname = "object.opticyrender"
+    bl_label = "最优CY设置"
+
+    def execute(self, context):
+        actobj: bpy.types.Object
+
+        actobj = bpy.context.active_object
+        actmat = actobj.active_material
+        act_scene = bpy.context.window.scene
+        # 设置cycles参数
+        bpy.context.scene.render.engine = 'CYCLES'
+        bpy.data.scenes[act_scene.name].cycles.feature_set = 'EXPERIMENTAL'
+        bpy.data.scenes["Scene"].cycles.device = 'GPU'
+        # 设置渲染参数
+        bpy.context.scene.cycles.preview_adaptive_threshold = 0.01
+        bpy.context.scene.cycles.use_preview_denoising = True
+        bpy.context.scene.cycles.tile_size = 512
+        bpy.context.scene.view_settings.look = 'AgX - High Contrast'
+        bpy.context.scene.render.image_settings.compression = 0
+
+        return {'FINISHED'}
+
+class AddSubdivisionOperator(bpy.types.Operator):
+    bl_idname = "object.addsubd"
+    bl_label = "开启自适应细分"
+
+    def execute(self, context):
+        actobj: bpy.types.Object
+
+        actobj = bpy.context.active_object
+        act_scene = bpy.context.window.scene
+
+        hassubsurf = 0
+        
+        if len(actobj.modifiers) == 0:
+            subd_mod = actobj.modifiers.new(name="Bridge Dispalcement", type="SUBSURF")
+            subd_mod.subdivision_type = "SIMPLE"
+            actobj.cycles.use_adaptive_subdivision = True
+        else:
+            for i in actobj.modifiers:
+                if i.type == "SUBSURF":
+                    hassubsurf = 1
+            if hassubsurf == 0 and len(actobj.modifiers) != 0:
+                subd_mod = actobj.modifiers.new(name="Bridge Dispalcement", type="SUBSURF")
+                subd_mod.subdivision_type = "SIMPLE"
+                actobj.cycles.use_adaptive_subdivision = True
+
+        return {'FINISHED'}
+
 class ChangeProjectionOperator(bpy.types.Operator):
     bl_idname = "object.changeprojection"
-    bl_label = "切换贴图映射方式"
+    bl_label = "Toggle map mapping"
 
     def execute(self, context):
         actobj = bpy.context.active_object
         actmat = actobj.active_material
+        texcoordnode = None
+        texmapping = None
         links = bpy.data.materials[actmat.name].node_tree.links
-        for node in  actmat.node_tree.nodes:
+        for node in actmat.node_tree.nodes:
             if node.type == "TEX_COORD":
                 texcoordnode = node
             if node.type == "MAPPING":
                 texmapping = node
             if node.type == "TEX_IMAGE":
                 if node.projection == "BOX":
-                    node.projection = "FLAT"
-                    links.new(texcoordnode.outputs["UV"],texmapping.inputs["Vector"])
+                    imgprojection = 'BOX'
                 elif node.projection == "FLAT":
-                    node.projection = "BOX"
-                    links.new(texcoordnode.outputs["Object"],texmapping.inputs["Vector"])
+                    imgprojection = 'FLAT'
+        
+        for node in actmat.node_tree.nodes:
+            if node.type == "TEX_IMAGE" and imgprojection == 'BOX':
+                node.projection = "FLAT"
+                links.new(texcoordnode.outputs["UV"],texmapping.inputs["Vector"])
+            if node.type == "TEX_IMAGE" and imgprojection == 'FLAT':
+                node.projection = "BOX"
+                links.new(texcoordnode.outputs["Object"],texmapping.inputs["Vector"])
         return {'FINISHED'}
 
-class EVDisplacementOperator(bpy.types.Operator):
-    bl_idname = "object.evdisplacement"
-    bl_label = "实验性：创建eevee视差"
+# class EVDisplacementOperator(bpy.types.Operator):
+#     bl_idname = "object.evdisplacement"
+#     bl_label = "实验性:创建eevee视差"
 
-    def execute(self, context):
-        actobj = bpy.context.active_object
-        actmat = actobj.active_material
+#     def execute(self, context):
+#         actobj = bpy.context.active_object
+#         actmat = actobj.active_material
 
-        vectorgroup = bpy.data.node_groups.new('Vector Group', 'ShaderNodeTree')
-        group_inputs = vectorgroup.nodes.new('NodeGroupInput')
-        group_inputs.location = (-350,0)
-        vectorgroup.inputs.new('NodeSocketFloat','in_to_greater')
+#         vectorgroup = bpy.data.node_groups.new('Vector Group', 'ShaderNodeTree')
+#         group_inputs = vectorgroup.nodes.new('NodeGroupInput')
+#         group_inputs.location = (-350,0)
+#         vectorgroup.inputs.new('NodeSocketFloat','in_to_greater')
 
-        # create group outputs
-        group_outputs = vectorgroup.nodes.new('NodeGroupOutput')
-        group_outputs.location = (300,0)
-        vectorgroup.outputs.new('NodeSocketVector','out_result')
+#         # create group outputs
+#         group_outputs = vectorgroup.nodes.new('NodeGroupOutput')
+#         group_outputs.location = (300,0)
+#         vectorgroup.outputs.new('NodeSocketVector','out_result')
 
-        nodegroup = actmat.node_tree.nodes.new('ShaderNodeGroup', 'Parallex Vector')
-        nodegroup.node_tree = vectorgroup
-        nodegroup.location = (-1300, 0)
-        return {'FINISHED'}
+#         nodegroup = actmat.node_tree.nodes.new('ShaderNodeGroup', 'Parallex Vector')
+#         nodegroup.node_tree = vectorgroup
+#         nodegroup.location = (-1300, 0)
+#         return {'FINISHED'}
 
 # MS_Init_ImportProcess is the main asset import class.
 # This class is invoked whenever a new asset is set from Bridge.
@@ -139,14 +268,14 @@ class MS_Init_ImportProcess():
                     self.textureList = []
                     self.isBillboard = self.CheckIsBillboard()
                     self.ApplyToSelection = False
-                    self.isSpecularWorkflow = True
+                    self.isSpecularWorkflow = False
                     self.isAlembic = False
 
                     self.NormalSetup = False
                     self.BumpSetup = False
 
-                    if "workflow" in self.json_data.keys():
-                        self.isSpecularWorkflow = bool(self.json_data["workflow"] == "specular")
+                    # if "workflow" in self.json_data.keys():
+                    #     self.isSpecularWorkflow = bool(self.json_data["workflow"] == "specular")
 
                     if "applyToSelection" in self.json_data.keys():
                         self.ApplyToSelection = bool(self.json_data["applyToSelection"])
@@ -209,7 +338,7 @@ class MS_Init_ImportProcess():
                     # Initialize the import method to start building our shader and import our geometry
                     self.initImportProcess()
                     print("Imported asset from " + self.assetName + " Quixel Bridge")
-        
+                            
             if len(globals()['MG_AlembicPath']) > 0:
                 globals()['MG_ImportComplete'] = True        
         except Exception as e:
@@ -234,6 +363,7 @@ class MS_Init_ImportProcess():
                     self.PlantAssetSetup()
 
                 self.SetupMaterial()
+                self.GiveObjectsMaterial()
 
                 if self.isAlembic:
                     globals()['MG_Material'].append(self.mat)
@@ -332,7 +462,6 @@ class MS_Init_ImportProcess():
 
     #Shader setups for all asset types. Some type specific functionality is also handled here.
     def SetupMaterial (self):
-        print(self.textureTypes)
         if "albedo" in self.textureTypes:
             if "ao" in self.textureTypes:
                 self.CreateTextureMultiplyNode("albedo", "ao", -250, 320, -640, 460, -640, 200, 0, 1, True, 0)
@@ -361,11 +490,11 @@ class MS_Init_ImportProcess():
                 self.TexCount += 1
         else:
             if "metalness" in self.textureTypes:
-                self.CreateTextureNode("metalness", -640, 460-(self.TexCount*260), 1, True, 6)
+                self.CreateTextureNode("metalness", -640, 460-(self.TexCount*260), 1, True, 1)
                 self.TexCount += 1
             
             if "roughness" in self.textureTypes:
-                self.CreateTextureNode("roughness", -640, 460-(self.TexCount*260), 1, True, 9)
+                self.CreateTextureNode("roughness", -640, 460-(self.TexCount*260), 1, True, 2)
                 self.TexCount += 1
             elif "gloss" in self.textureTypes:
                 glossNode = self.CreateTextureNode("gloss", -640, 460-(self.TexCount*260))
@@ -407,9 +536,9 @@ class MS_Init_ImportProcess():
         self.parentName = "Principled BSDF"
         self.materialOutputName = "Material Output"
 
-        self.mat.node_tree.nodes[self.parentName].distribution = 'MULTI_GGX'
-        self.mat.node_tree.nodes[self.parentName].inputs[4].default_value = 1 if self.isMetal else 0 # Metallic value
-        # self.mat.node_tree.nodes[self.parentName].inputs[14].default_value = self.IOR
+        # self.mat.node_tree.nodes[self.parentName].distribution = 'MULTI_GGX'
+        # self.mat.node_tree.nodes[self.parentName].inputs[4].default_value = 1 if self.isMetal else 0 # Metallic value
+        # # self.mat.node_tree.nodes[self.parentName].inputs[14].default_value = self.IOR
         
         self.mappingNode = None
 
@@ -419,11 +548,15 @@ class MS_Init_ImportProcess():
             self.mappingNode.vector_type = 'TEXTURE'
             self.reroute = self.CreateGenericNode("NodeReroute",-1200,0)
             # Create texture coordinate node.
-            texCoordNode = self.CreateGenericNode("ShaderNodeTexCoord", -2150, -200)
+            texCoordNode = self.CreateGenericNode("ShaderNodeTexCoord", -2150, -0)
+            floatNode = self.CreateGenericNode("ShaderNodeValue", -2150, -250)
+            floatNode.outputs[0].default_value = 1.0
             # Connect texCoordNode to the mappingNode
             if self.assetType == "surface":
                 self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[3])
                 self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
+
+                self.mat.node_tree.links.new(self.mappingNode.inputs[3], floatNode.outputs[0])
             if self.assetType == "3d":
                 self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[2])
                 self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
@@ -578,6 +711,17 @@ class MS_Init_ImportProcess():
         for item in self.textureList:
             if item[1] == textureType:
                 return item[0].lower()
+
+#========================================================================================================================
+    def GiveObjectsMaterial(self):
+        act_obj = bpy.context.active_object
+        if act_obj.type == "MESH":
+            print(self.assetType)
+            if self.assetType == "surface":
+                qui_mat = bpy.data.materials[self.materialName]
+                act_obj.active_material = qui_mat
+
+#========================================================================================================================
 
 class ms_Init(threading.Thread):
     
@@ -749,6 +893,12 @@ class MS_Init_Abc(bpy.types.Operator):
             print( "Megascans Plugin Error starting MS_Init_Abc. Error: ", str(e) )
             return {"CANCELLED"}
 
+class testpreferences(bpy.types.AddonPreferences):
+    bl_idname = "test perferences"
+    
+    def draw(self, context):
+        layout = self.layout
+
 @persistent
 def load_plugin(scene):
     try:
@@ -763,8 +913,13 @@ classes = (
     MS_Init_LiveLink,
     MS_Init_Abc,
     FixBridgeToolsPanel,
+    OptiEVRenderOperator,
+    OptiCYRenderOperator,
+    AddSubdivisionOperator,
     ChangeProjectionOperator,
-    EVDisplacementOperator
+    # EVDisplacementOperator,
+    testpreferences,
+    TestOperator
 )
 
 def register():
@@ -772,10 +927,10 @@ def register():
     for cls in classes:
         register_class(cls)
 
-    if len(bpy.app.handlers.load_post) > 0:
-        # Check if trying to register twice.
-        if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
-            return
+    # if len(bpy.app.handlers.load_post) > 0:
+    #     # Check if trying to register twice.
+    #     if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
+    #         return
     # bpy.utils.register_class(MS_Init_LiveLink)
     # bpy.utils.register_class(MS_Init_Abc)
     bpy.app.handlers.load_post.append(load_plugin)
@@ -786,8 +941,9 @@ def unregister():
     for cls in reversed(classes):
         unregister_class(cls)
 
-    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
-    if len(bpy.app.handlers.load_post) > 0:
-        # Check if trying to register twice.
-        if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
-            bpy.app.handlers.load_post.remove(load_plugin)
+
+    # bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    # if len(bpy.app.handlers.load_post) > 0:
+    #     # Check if trying to register twice.
+    #     if "load_plugin" in bpy.app.handlers.load_post[0].__name__.lower() or load_plugin in bpy.app.handlers.load_post:
+    #         bpy.app.handlers.load_post.remove(load_plugin)
