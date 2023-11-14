@@ -6,6 +6,11 @@
  * @Description: 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  * @FilePath: \Fix_Quixel_Bridge_Addon-1\README.md
 -->
+警告:
+3.8版本仅适用于Blender4.0, 4.0以下版本请使用旧版插件
+
+Warning: 
+Version 3.8 is only compatible with Blender 4.0. For versions below 4.0, please use the old plugin.
 
 Chinese:
 
