@@ -521,7 +521,7 @@ class MS_Init_ImportProcess():
         # If LODs selected > use corresponding LODs normal + displacement
         # if self.isHighPoly:
         #     self.BumpSetup = False
-        self.CreateNormalNodeSetup(True, 22)
+        self.CreateNormalNodeSetup(True, 5)
         self.TexCount += 1
 
         if "displacement" in self.textureTypes: #and not self.isHighPoly:
