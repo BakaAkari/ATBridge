@@ -1,18 +1,10 @@
-# ##### QUIXEL AB - MEGASCANS PLugin FOR BLENDER #####
-#
-# The Megascans Plugin  plugin for Blender is an add-on that lets
-# you instantly import assets with their shader setup with one click only.
-#
-# Because it relies on some of the latest 2.80 features, this plugin is currently
-# only available for Blender 2.80 and forward.
-#
-# You are free to modify, add features or tweak this add-on as you see fit, and
-# don't hesitate to send us some feedback if you've done something cool with it.
-#
-# ##### QUIXEL AB - MEGASCANS PLUGIN FOR BLENDER #####
 from unicodedata import name
 import bpy, threading, os, time, json, socket
 from bpy.app.handlers import persistent
+
+from bpy.props import PointerProperty
+from . import ATBPreferences, ATBOperator, ATBProps, ATBFunctions
+from . ATBProps import ATB_PropGroup
 
 globals()['Megascans_DataSet'] = None
 
@@ -22,15 +14,14 @@ globals()['MG_AlembicPath'] = []
 globals()['MG_ImportComplete'] = False
 
 bl_info = {
-    "name": "Fix Megascans Plugin", 
-    "description": "Connects Blender to Quixel Bridge for one-click imports with shader setup and geometry",
+    "name": "AkariToolsBag & Megascans", 
+    "description": "Akari Toolkit integrates the optimized Quixel Bridge plugin suite.",
     "author": "Akari",
-    "version": (3, 8, 0),
-    "blender": (4, 0, 0),
+    "version": (4, 0, 0),
+    "blender": (4, 1, 0),
     "location": "File > Import",
-    "warning": "", # used for warning icon and text in addons panel
+    "warning": "Multiple functions are in beta", # used for warning icon and text in addons panel
     "wiki_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart.html",
-    "tracker_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart#release_notes",
     "support": "COMMUNITY",
     "category": "Import-Export"
 }
@@ -62,9 +53,15 @@ class FixBridgeToolsPanel(bpy.types.Panel):
         layout.operator('object.addsubd', text="Turn on adaptive subdivision")
         # layout.operator('object.testop', text="测试按钮")
 
+        # 创建节点参数控制滑竿
         try:
-            if act_obj.active_material and nodes['Value']:
-                layout.prop(nodes['Value'].outputs[0], "default_value", text = 'Tiling Scale')
+            if act_obj.active_material and nodes['Tiling Scale']:
+                layout.prop(nodes['Tiling Scale'].outputs[0], "default_value", text = 'Tiling Scale')
+        except:
+            pass
+        try:
+            if act_obj.active_material and nodes['Bump Strength']:
+                layout.prop(nodes['Bump Strength'].outputs[0], "default_value", text = 'Bump Strength')
         except:
             pass
 
@@ -550,6 +547,7 @@ class MS_Init_ImportProcess():
             # Create texture coordinate node.
             texCoordNode = self.CreateGenericNode("ShaderNodeTexCoord", -2150, -0)
             floatNode = self.CreateGenericNode("ShaderNodeValue", -2150, -250)
+            floatNode.name = 'Tiling Scale'
             floatNode.outputs[0].default_value = 1.0
             # Connect texCoordNode to the mappingNode
             if self.assetType == "surface":
@@ -676,6 +674,10 @@ class MS_Init_ImportProcess():
             RGBSplitterNode = self.CreateGenericNode("ShaderNodeSeparateRGB", -250, -550)
             # Import normal map and normal map node setup.
             displacementMapNode = self.CreateTextureNode("displacement", -640, 460-(self.TexCount*260))
+            #创建置换强度控制节点
+            floatNode = self.CreateGenericNode("ShaderNodeValue", -250, -650)
+            floatNode.name = 'Bump Strength'
+            floatNode.outputs[0].default_value = 0.1
 
             if self.assetType == "surface":
                 displacementMapNode.projection = "BOX"
@@ -686,9 +688,11 @@ class MS_Init_ImportProcess():
             # Add RGBSplitterNode to displacementNode connection
             self.mat.node_tree.links.new(displacementNode.inputs[0], RGBSplitterNode.outputs[0])
             # Add normalNode connection to the material output displacement node
+            self.mat.node_tree.links.new(displacementNode.inputs[2], floatNode.outputs[0])
+
             if connectToMaterial:
                 self.mat.node_tree.links.new(self.nodes.get(self.materialOutputName).inputs[2], displacementNode.outputs[0])
-                self.mat.cycles.displacement_method = 'BOTH'
+                self.mat.displacement_method = 'BOTH'
 
         if self.DisplacementSetup == "regular":
             pass        
@@ -926,6 +930,13 @@ def register():
     from bpy.utils import register_class
     for cls in classes:
         register_class(cls)
+    ATBPreferences.register()
+    ATBOperator.register()
+    ATBProps.register()
+    bpy.types.Scene.atbprops = PointerProperty(type=ATB_PropGroup)
+    bpy.types.WindowManager.quick_physics = PointerProperty(type=ATB_PropGroup)
+    bpy.types.STATUSBAR_HT_header.append(ATBFunctions.translationui)
+    bpy.types.DOPESHEET_HT_header.append(ATBFunctions.setframe)
 
     # if len(bpy.app.handlers.load_post) > 0:
     #     # Check if trying to register twice.
@@ -940,6 +951,13 @@ def unregister():
     from bpy.utils import unregister_class
     for cls in reversed(classes):
         unregister_class(cls)
+    ATBPreferences.unregister()
+    ATBOperator.unregister()
+    ATBProps.unregister() 
+    del bpy.types.Scene.atbprops
+    del bpy.types.WindowManager.quick_physics
+    bpy.types.STATUSBAR_HT_header.remove(ATBFunctions.translationui)
+    bpy.types.DOPESHEET_HT_header.remove(ATBFunctions.setframe)
 
     # bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     # if len(bpy.app.handlers.load_post) > 0:
