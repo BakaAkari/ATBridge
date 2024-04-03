@@ -40,7 +40,6 @@ ATBridge is a plugin for Quixel Bridge that integrates a set of convenient tools
 - QQ群: 628731557
 - Email: exwww2000@qq.com
 
-![Rename](https://gitee.com/baka-akari/images_lib/raw/master/%E5%8A%A8%E7%94%BB%2025.gif "Rename")
 ![Image text](https://gitee.com/baka-akari/images_lib/raw/master/%E5%8A%A8%E7%94%BB%2025.gif)
 ![Image text](https://gitee.com/baka-akari/images_lib/raw/master/%E5%8A%A8%E7%94%BB%2027.gif)
 ![Image text](https://gitee.com/baka-akari/images_lib/raw/master/%E5%8A%A8%E7%94%BB%2026.gif)
