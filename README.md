@@ -1,6 +1,9 @@
 # ATBridge Plugin
 
 ## Introduction
+#### [中文]
+ATBridge是集成了ATB功能的Quixel Bridge桥接插件, 内置了一些常用功能
+#### [English]
 ATBridge is a plugin for Quixel Bridge that integrates a set of convenient tools for personal use.
 
 ## Change Log
