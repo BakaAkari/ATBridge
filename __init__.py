@@ -14,16 +14,16 @@ globals()['MG_AlembicPath'] = []
 globals()['MG_ImportComplete'] = False
 
 bl_info = {
-    "name": "AkariToolsBag & Megascans", 
+    "name": "ATBridge", 
     "description": "Akari Toolkit integrates the optimized Quixel Bridge plugin suite.",
     "author": "Akari",
-    "version": (4, 0, 0),
+    "version": (4, 0, 1),
     "blender": (4, 1, 0),
-    "location": "File > Import",
+    "location": "View3D",
     "warning": "Multiple functions are in beta", # used for warning icon and text in addons panel
     "wiki_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart.html",
     "support": "COMMUNITY",
-    "category": "Import-Export"
+    "category": "3D View"
 }
 
 class FixBridgeToolsPanel(bpy.types.Panel):
@@ -56,24 +56,14 @@ class FixBridgeToolsPanel(bpy.types.Panel):
         # 创建节点参数控制滑竿
         try:
             if act_obj.active_material and nodes['Tiling Scale']:
-                layout.prop(nodes['Tiling Scale'].outputs[0], "default_value", text = 'Tiling Scale')
+                layout.prop(nodes['Tiling Scale'].outputs['Value'], "default_value", text = 'Tiling Scale')
         except:
             pass
         try:
             if act_obj.active_material and nodes['Bump Strength']:
-                layout.prop(nodes['Bump Strength'].outputs[0], "default_value", text = 'Bump Strength')
+                layout.prop(nodes['Bump Strength'].outputs['Value'], "default_value", text = 'Bump Strength')
         except:
             pass
-
-
-class TestOperator(bpy.types.Operator):
-    bl_idname = "object.testop"
-    bl_label = "测试按钮"
-
-    def execute(self, context):
-        act_obj = bpy.context.active_object
-        print(act_obj.active_material)
-        return {'FINISHED'}
 
 class OptiEVRenderOperator(bpy.types.Operator):
     bl_idname = "object.optievrender"
@@ -347,7 +337,7 @@ class MS_Init_ImportProcess():
     def initImportProcess(self):
         try:
             if len(self.textureList) >= 1:
-                
+
                 if(self.ApplyToSelection and self.assetType not in ["3dplant", "3d"]):
                     self.CollectSelectedObjects()
 
@@ -465,7 +455,7 @@ class MS_Init_ImportProcess():
                 self.TexCount += 2
                 # print("have AO")
             else:
-                self.CreateTextureNode("albedo", -640, 460, 0, True, 0)
+                self.CreateTextureNode("albedo", -640, 460, 0, True, 'Base Color')
                 self.TexCount += 1
                 # print("have color")
         
@@ -487,11 +477,11 @@ class MS_Init_ImportProcess():
                 self.TexCount += 1
         else:
             if "metalness" in self.textureTypes:
-                self.CreateTextureNode("metalness", -640, 460-(self.TexCount*260), 1, True, 1)
+                self.CreateTextureNode("metalness", -640, 460-(self.TexCount*260), 1, True, 'Metallic')
                 self.TexCount += 1
             
             if "roughness" in self.textureTypes:
-                self.CreateTextureNode("roughness", -640, 460-(self.TexCount*260), 1, True, 2)
+                self.CreateTextureNode("roughness", -640, 460-(self.TexCount*260), 1, True, 'Roughness')
                 self.TexCount += 1
             elif "gloss" in self.textureTypes:
                 glossNode = self.CreateTextureNode("gloss", -640, 460-(self.TexCount*260))
@@ -503,23 +493,24 @@ class MS_Init_ImportProcess():
                 self.TexCount += 1
             
         if "opacity" in self.textureTypes:
-            self.CreateTextureNode("opacity", -640, 460-(self.TexCount*260), 1, True, 21) #if bpy.app.version >= (2, 91, 0) else 18)
+            self.CreateTextureNode("opacity", -640, 460-(self.TexCount*260), 1, True, 'Alpha') #if bpy.app.version >= (2, 91, 0) else 18)
             self.mat.blend_method = 'HASHED'
             self.TexCount += 1
 
-        if "translucency" in self.textureTypes:
-            self.CreateTextureNode("translucency", -640, 460-(self.TexCount*260), 0, True, 17)
-            self.TexCount += 1
+        # if "translucency" in self.textureTypes:
+        #     self.CreateTextureNode("translucency", -640, 460-(self.TexCount*260), 1, True, '')
+        #     self.TexCount += 1
         elif "transmission" in self.textureTypes:
-            self.CreateTextureNode("transmission", -640, 460-(self.TexCount*260), 1, True, 17)
+            self.CreateTextureNode("transmission", -640, 460-(self.TexCount*260), 1, True, 'Transmission Weight')
             self.TexCount += 1
 
         # If HIGH POLY selected > use normal_bump and no displacement
         # If LODs selected > use corresponding LODs normal + displacement
         # if self.isHighPoly:
         #     self.BumpSetup = False
-        self.CreateNormalNodeSetup(True, 5)
-        self.TexCount += 1
+        if "normal" in self.textureTypes:
+            self.CreateNormalNodeSetup(True, 5)
+            self.TexCount += 1
 
         if "displacement" in self.textureTypes: #and not self.isHighPoly:
             self.CreateDisplacementSetup(True)
@@ -551,18 +542,18 @@ class MS_Init_ImportProcess():
             floatNode.outputs[0].default_value = 1.0
             # Connect texCoordNode to the mappingNode
             if self.assetType == "surface":
-                self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[3])
+                self.mat.node_tree.links.new(self.mappingNode.inputs['Vector'], texCoordNode.outputs['Object'])
                 self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
 
-                self.mat.node_tree.links.new(self.mappingNode.inputs[3], floatNode.outputs[0])
+                self.mat.node_tree.links.new(self.mappingNode.inputs['Scale'], floatNode.outputs['Value'])
             if self.assetType == "3d":
-                self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[2])
+                self.mat.node_tree.links.new(self.mappingNode.inputs['Vector'], texCoordNode.outputs['UV'])
                 self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
             if self.assetType == "atlas":
-                self.mat.node_tree.links.new(self.mappingNode.inputs[0], texCoordNode.outputs[2])
+                self.mat.node_tree.links.new(self.mappingNode.inputs['Vector'], texCoordNode.outputs['UV'])
                 self.mat.node_tree.links.new(self.reroute.inputs[0], self.mappingNode.outputs[0])
 
-    def CreateTextureNode(self, textureType, PosX, PosY, colorspace = 1, connectToMaterial = False, materialInputIndex = 0):
+    def CreateTextureNode(self, textureType, PosX, PosY, colorspace = 1, connectToMaterial = False, MaterialInputIdent = ''):
         texturePath = self.GetTexturePath(textureType)
         textureNode = self.CreateGenericNode('ShaderNodeTexImage', PosX, PosY)
         textureNode.image = bpy.data.images.load(texturePath)
@@ -578,10 +569,10 @@ class MS_Init_ImportProcess():
                 textureNode.image.colorspace_settings.name = self.colorSpaces[2] # "sRGB", "Non-Color", "Linear"
 
         if connectToMaterial:
-            self.ConnectNodeToMaterial(materialInputIndex, textureNode)
+            self.ConnectNodeToMaterial(MaterialInputIdent, textureNode)
         # If it is Cycles render we connect it to the mapping node.
         if self.assetType not in ["3d", "3dplant"]:
-            self.mat.node_tree.links.new(textureNode.inputs[0], self.reroute.outputs[0])
+            self.mat.node_tree.links.new(textureNode.inputs['Vector'], self.reroute.outputs[0])
         return textureNode
 
     def CreateTextureMultiplyNode(self, aTextureType, bTextureType, PosX, PosY, aPosX, aPosY, bPosX, bPosY, aColorspace, bColorspace, connectToMaterial, materialInputIndex):
@@ -603,8 +594,8 @@ class MS_Init_ImportProcess():
             textureNodeB.projection_blend = 0.25
         
         # Conned albedo and ao node to the multiply node.
-        self.mat.node_tree.links.new(multiplyNode.inputs[1], textureNodeA.outputs[0])
-        self.mat.node_tree.links.new(multiplyNode.inputs[2], textureNodeB.outputs[0])
+        self.mat.node_tree.links.new(multiplyNode.inputs['Color1'], textureNodeA.outputs['Color'])
+        self.mat.node_tree.links.new(multiplyNode.inputs['Color2'], textureNodeB.outputs['Color'])
 
         if connectToMaterial:
             self.ConnectNodeToMaterial(materialInputIndex, multiplyNode)
@@ -612,7 +603,7 @@ class MS_Init_ImportProcess():
         return multiplyNode
 
     def CreateNormalNodeSetup(self, connectToMaterial, materialInputIndex):
-        
+
         bumpNode = None
         normalNode = None
         bumpMapNode = None
@@ -644,7 +635,7 @@ class MS_Init_ImportProcess():
                 normalMapNode.projection_blend = 0.25
 
             # Add normalMapNode to normalNode connection
-            self.mat.node_tree.links.new(normalNode.inputs[1], normalMapNode.outputs[0])
+            self.mat.node_tree.links.new(normalNode.inputs['Color'], normalMapNode.outputs['Color'])
             # Add normalNode connection to the material parent node
             if connectToMaterial:
                 self.ConnectNodeToMaterial(materialInputIndex, normalNode)
@@ -688,7 +679,7 @@ class MS_Init_ImportProcess():
             # Add RGBSplitterNode to displacementNode connection
             self.mat.node_tree.links.new(displacementNode.inputs[0], RGBSplitterNode.outputs[0])
             # Add normalNode connection to the material output displacement node
-            self.mat.node_tree.links.new(displacementNode.inputs[2], floatNode.outputs[0])
+            self.mat.node_tree.links.new(displacementNode.inputs['Scale'], floatNode.outputs[0])
 
             if connectToMaterial:
                 self.mat.node_tree.links.new(self.nodes.get(self.materialOutputName).inputs[2], displacementNode.outputs[0])
@@ -698,8 +689,8 @@ class MS_Init_ImportProcess():
             pass        
         # print(self.TexCount)
 
-    def ConnectNodeToMaterial(self, materialInputIndex, textureNode):
-        self.mat.node_tree.links.new(self.nodes.get(self.parentName).inputs[materialInputIndex], textureNode.outputs[0])
+    def ConnectNodeToMaterial(self, MaterialInputIdent, textureNode):
+        self.mat.node_tree.links.new(self.nodes.get(self.parentName).inputs[MaterialInputIdent], textureNode.outputs[0])
 
     def CreateGenericNode(self, nodeName, PosX, PosY):
         genericNode = self.nodes.new(nodeName)
@@ -722,6 +713,9 @@ class MS_Init_ImportProcess():
         if act_obj.type == "MESH":
             print(self.assetType)
             if self.assetType == "surface":
+                qui_mat = bpy.data.materials[self.materialName]
+                act_obj.active_material = qui_mat
+            if self.assetType == "atlas":
                 qui_mat = bpy.data.materials[self.materialName]
                 act_obj.active_material = qui_mat
 
@@ -923,7 +917,6 @@ classes = (
     ChangeProjectionOperator,
     # EVDisplacementOperator,
     testpreferences,
-    TestOperator
 )
 
 def register():

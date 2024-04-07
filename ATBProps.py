@@ -77,13 +77,13 @@ class ATB_PropGroup(PropertyGroup):
     #     maxlen=1024,
     #     subtype='FILE_PATH'
     #     )
-    addonaddress: StringProperty(
-        name='addonaddress',
-        description='',
-        default='',
-        maxlen=1024,
-        subtype='DIR_PATH'
-        )
+    # addonaddress: StringProperty(
+    #     name='addonaddress',
+    #     description='',
+    #     default='',
+    #     maxlen=1024,
+    #     subtype='DIR_PATH'
+    #     )
 
 classes = (ATB_PropGroup,
            )

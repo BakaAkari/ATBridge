@@ -25,7 +25,7 @@ class ATB_Panel(bpy.types.Panel):
         object_column = object_box.column()
         object_column.label(text='Object Operator')
         object_column.operator('object.rename', text='Rename Object')
-        object_column.operator('object.resetorigin', text='Reset Origin')
+        # object_column.operator('object.resetorigin', text='Reset Origin')
         object_column.operator('object.cleanobject', text='Clean Object')
 
         image_box = layout.box()
@@ -47,7 +47,7 @@ class ATB_Panel(bpy.types.Panel):
         else:
             physics_column.prop(wm.quick_physics,'running_physics_calculation', text="Cancel Calculation",icon="X")
 
-        physics_column.operator('object.atbtestoperator',text = "测试按钮")
+        # physics_column.operator('object.atbtestoperator',text = "测试按钮")
 
 class Reload_Image_Operator(bpy.types.Operator):
     bl_idname = "object.reloadimage"
@@ -154,10 +154,13 @@ class Translation(bpy.types.Operator):
     def execute(self, context):
         viewlanguage = context.preferences.view.language
         prefview = context.preferences.view
-        if viewlanguage == "zh_HANS":
+        if viewlanguage != "en_US":
             context.preferences.view.language = "en_US"
         else:
-            context.preferences.view.language = "zh_HANS"
+            try:
+                context.preferences.view.language = "zh_CN"
+            except:
+                context.preferences.view.language = "zh_HANS"
             prefview.use_translate_new_dataname = False
         return{'FINISHED'}
 
@@ -191,6 +194,8 @@ class QuickPhysics_CalcPhysics(bpy.types.Operator):
                 if add and obj.rigid_body == None:
                     bpy.ops.rigidbody.object_add()
                     obj.rigid_body.friction = quick_physics.physics_friction
+                    obj.rigid_body.use_margin = True
+                    obj.rigid_body.collision_margin = 0.0001
                     obj.rigid_body.type = "PASSIVE"
                     obj.rigid_body.collision_shape = "MESH"
                 elif not add and obj.rigid_body != None:
@@ -332,7 +337,8 @@ class Setstartframe(bpy.types.Operator):
         try:
             pass # Set Start Frame Script Start
             import bpy
-            bpy.data.scenes["Scene"].frame_start = bpy.data.scenes["Scene"].frame_current
+            actscene = bpy.context.scene
+            bpy.data.scenes[actscene.name].frame_start = bpy.data.scenes[actscene.name].frame_current
             pass # Set Start Frame Script End
         except Exception as exc:
             print(str(exc) + " | Error in execute function of SetStartFrame")
@@ -360,7 +366,8 @@ class Setendframe(bpy.types.Operator):
         try:
             pass # Set End Frame Script Start
             import bpy
-            bpy.data.scenes["Scene"].frame_end = bpy.data.scenes["Scene"].frame_current
+            actscene = bpy.context.scene
+            bpy.data.scenes[actscene.name].frame_end = bpy.data.scenes[actscene.name].frame_current
             pass # Set End Frame Script End
         except Exception as exc:
             print(str(exc) + " | Error in execute function of SetEndFrame")
@@ -379,12 +386,13 @@ class StopLoop_OP(bpy.types.Operator):
 
     def execute(self, context):
         frame_change = bpy.app.handlers.frame_change_pre
+        actscene = bpy.context.scene
 
         if stop_playback not in frame_change:
-            stop_playback(bpy.data.scenes["Scene"])
+            stop_playback(bpy.data.scenes[actscene.name])
             frame_change.append(stop_playback)
         elif stop_playback in frame_change:
-            start_playback(bpy.data.scenes["Scene"])
+            start_playback(bpy.data.scenes[actscene.name])
             del frame_change[-1]
 
         print(list(frame_change))
@@ -396,9 +404,7 @@ class ATBTestOperator(bpy.types.Operator):
     bl_label = "ATBTestOperator"
 
     def execute(self, context):
-        clip_data = bpy.context.window_manager.clipboard
-
-        print(clip_data)
+        print("test")
         return {'FINISHED'}
 
 classes = (

@@ -22,58 +22,58 @@ class ATB_AddonPreferences(AddonPreferences):
         col.operator('object.atbimportaddons', text='Update Plugins')
         col.operator(ATB_DefaultSetting.bl_idname,text="Optimize Blender settings")
         
-class ATB_ImportAddons(bpy.types.Operator):
-    bl_idname = "object.atbimportaddons"
-    bl_label = "更新插件库"
+# class ATB_ImportAddons(bpy.types.Operator):
+#     bl_idname = "object.atbimportaddons"
+#     bl_label = "更新插件库"
     
-    def execute(self, context):
-        keys = []
-        newaddonfilepath = context.scene.atbprops.addonaddress
-        customaddonlist = [
-                            'HOps', 
-                            'MACHIN3tools', 
-                            'MESHmachine',
-                            'batch_ops', 
-                            'Boxcutter', 
-                            'Fix_Quixel_Bridge_Addon', 
-                            'GoB', 
-                            'Node Kit',
-                            'smart_fill',
-                            'sculpt_paint_wheel',
-                            'better_fbx',
-                            'VertexGame_Tools',
-                            'Gaffer',
-        ]
-        defaultaddonlist = [
-                            'space_view3d_modifier_tools',
-                            'space_view3d_spacebar_menu',
-                            'object_collection_manager',
-                            'mesh_f2',
-                            'mesh_tools',
-                            'mesh_looptools',
-                            'node_wrangler',
-        ]
+#     def execute(self, context):
+#         keys = []
+#         newaddonfilepath = context.scene.atbprops.addonaddress
+#         customaddonlist = [
+#                             'HOps', 
+#                             'MACHIN3tools', 
+#                             'MESHmachine',
+#                             'batch_ops', 
+#                             'Boxcutter', 
+#                             'Fix_Quixel_Bridge_Addon', 
+#                             'GoB', 
+#                             'Node Kit',
+#                             'smart_fill',
+#                             'sculpt_paint_wheel',
+#                             'better_fbx',
+#                             'VertexGame_Tools',
+#                             'Gaffer',
+#         ]
+#         defaultaddonlist = [
+#                             'space_view3d_modifier_tools',
+#                             'space_view3d_spacebar_menu',
+#                             'object_collection_manager',
+#                             'mesh_f2',
+#                             'mesh_tools',
+#                             'mesh_looptools',
+#                             'node_wrangler',
+#         ]
 
-        blenderaddonpath = __file__.split('\\')
-        addonpath = '\\'.join(blenderaddonpath[:-2])
-        for root,dirs,files in os.walk(newaddonfilepath):
-            for f in files:
-                # print(f)
-                if f == "VertexGame_Tools.zip":
-                    with zipfile.ZipFile(onlineaddonpath) as zf:
-                        zf.extractall(addonpath)
-                else:
-                    onlineaddonpath = os.path.join(root,f)
-                    bpy.ops.preferences.addon_install(overwrite=True, filepath=onlineaddonpath)
-        bpy.ops.script.reload()
-        alladdonlist = customaddonlist + defaultaddonlist
-        for enab in alladdonlist:
-            try:
-                bpy.ops.preferences.addon_enable(module=enab)
-            except:
-                print(enab)
+#         blenderaddonpath = __file__.split('\\')
+#         addonpath = '\\'.join(blenderaddonpath[:-2])
+#         for root,dirs,files in os.walk(newaddonfilepath):
+#             for f in files:
+#                 # print(f)
+#                 if f == "VertexGame_Tools.zip":
+#                     with zipfile.ZipFile(onlineaddonpath) as zf:
+#                         zf.extractall(addonpath)
+#                 else:
+#                     onlineaddonpath = os.path.join(root,f)
+#                     bpy.ops.preferences.addon_install(overwrite=True, filepath=onlineaddonpath)
+#         bpy.ops.script.reload()
+#         alladdonlist = customaddonlist + defaultaddonlist
+#         for enab in alladdonlist:
+#             try:
+#                 bpy.ops.preferences.addon_enable(module=enab)
+#             except:
+#                 print(enab)
 
-        return{'FINISHED'}
+#         return{'FINISHED'}
 
 class ATB_DefaultSetting(bpy.types.Operator):
     bl_idname = "object.vgtdefaultsetting"
@@ -227,7 +227,7 @@ class ATB_DefaultSetting(bpy.types.Operator):
 #=====================================================================================
 
 
-classes = (ATB_AddonPreferences, ATB_ImportAddons, ATB_DefaultSetting)
+classes = (ATB_AddonPreferences, ATB_DefaultSetting)
 
 def register():
     global classes
