@@ -1,71 +1,81 @@
 import typing
+import os
 import bpy
 from bpy.types import Context
 from bpy.utils import register_class, unregister_class
-from . ATBFunctions import *
+from .ATBFunctions import *
 from mathutils import Matrix
 
-class ATB_Panel(bpy.types.Panel):
-    bl_idname = "OBJECT_PT_ATB"
-    bl_label = "Akari Tool Bag"
-    bl_category = "ATB"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
+class OptiEVRenderOperator(bpy.types.Operator):
+    bl_idname = "object.optievrender"
+    bl_label = "最优EV设置"
 
-    @classmethod
-    def poll(cls, context):
-        return (context.object is not None)
-
-    def draw(self, context):
-        props = context.scene.atbprops
-        wm = context.window_manager
-        layout = self.layout
-
-        object_box = layout.box()
-        object_column = object_box.column()
-        object_column.label(text='Object Operator')
-        object_column.operator('object.rename', text='Rename Object')
-        # object_column.operator('object.resetorigin', text='Reset Origin')
-        object_column.operator('object.cleanobject', text='Clean Object')
-
-        image_box = layout.box()
-        image_column = image_box.column()
-        image_row = image_column.row()
-        image_column.label(text='Image Operator')
-        image_column.operator('object.reloadimage', text='Reload Images')
-        image_column.operator('object.resizemesh', text='Resize Mesh')
-
-
-        row = layout.row()
-        physics_box = layout.box()
-        physics_column = physics_box.column()
-        physics_column.label(text='Quick Physics')
-        physics_column.prop(wm.quick_physics,'physics_friction', text="Friction",slider=True)
-        physics_column.prop(wm.quick_physics,'physics_time_scale', text="Time Scale")
-        if not wm.quick_physics.running_physics_calculation:
-            physics_column.operator('quick_physics.calc_physics',text = "开始模拟")
-        else:
-            physics_column.prop(wm.quick_physics,'running_physics_calculation', text="Cancel Calculation",icon="X")
-
-        # physics_column.operator('object.atbtestoperator',text = "测试按钮")
-
-class Reload_Image_Operator(bpy.types.Operator):
-    bl_idname = "object.reloadimage"
-    bl_label = "Reload Image"
-    
     def execute(self, context):
-        actobj = bpy.context.active_object
-        all_images = bpy.data.images
-        for image in all_images:
-            print(image.name)
-            image.reload()
+        actobj: bpy.types.Object
 
-        return{'FINISHED'}
+        actobj = bpy.context.active_object
+        actmat = actobj.active_material
+        act_scene = bpy.context.window.scene
+        # 设置eevee参数
+        bpy.context.scene.render.engine = 'BLENDER_EEVEE_NEXT'
+        # 设置渲染参数
+        bpy.data.scenes[act_scene.name].eevee.taa_samples = 0
+        bpy.data.scenes[act_scene.name].eevee.taa_render_samples = 512
+        #AO
+        bpy.context.scene.eevee.use_gtao = True
+        bpy.context.scene.eevee.gtao_quality = 1
+        #辉光
+        bpy.context.scene.eevee.use_bloom = True
+        #景深
+        bpy.context.scene.eevee.use_bokeh_high_quality_slight_defocus = True
+        bpy.context.scene.eevee.use_bokeh_jittered = True
+        #屏幕空间反射
+        bpy.context.scene.eevee.use_ssr = True
+        #体积
+        bpy.context.scene.eevee.volumetric_tile_size = '4'
+        bpy.context.scene.eevee.volumetric_sample_distribution = 1
+        bpy.context.scene.eevee.use_volumetric_shadows = True
+        bpy.context.scene.eevee.volumetric_shadow_samples = 64
+        #阴影
+        bpy.context.scene.eevee.shadow_cube_size = '2048'
+        bpy.context.scene.eevee.shadow_cascade_size = '2048'
+        bpy.context.scene.eevee.use_shadow_high_bitdepth = True
+        #高品质法线
+        bpy.context.scene.render.use_high_quality_normals = True
+        #色彩管理
+        bpy.context.scene.view_settings.look = 'AgX - High Contrast'
+        bpy.context.scene.render.image_settings.compression = 0
+
+        return {'FINISHED'}
+
+
+class OptiCYRenderOperator(bpy.types.Operator):
+    bl_idname = "object.opticyrender"
+    bl_label = "最优CY设置"
+
+    def execute(self, context):
+        actobj: bpy.types.Object
+
+        actobj = bpy.context.active_object
+        actmat = actobj.active_material
+        act_scene = bpy.context.window.scene
+        # 设置cycles参数
+        bpy.context.scene.render.engine = 'CYCLES'
+        bpy.data.scenes[act_scene.name].cycles.feature_set = 'EXPERIMENTAL'
+        bpy.data.scenes["Scene"].cycles.device = 'GPU'
+        # 设置渲染参数
+        bpy.context.scene.cycles.preview_adaptive_threshold = 0.01
+        bpy.context.scene.cycles.use_preview_denoising = True
+        bpy.context.scene.cycles.tile_size = 512
+        bpy.context.scene.view_settings.look = 'AgX - High Contrast'
+        bpy.context.scene.render.image_settings.compression = 0
+
+        return {'FINISHED'}
 
 class Resize_Mesh_Operator(bpy.types.Operator):
     bl_idname = "object.resizemesh"
     bl_label = "Resize Size Mesh"
-    
+
     def execute(self, context):
         sel_objs = bpy.context.selected_objects
         for obj in sel_objs:
@@ -73,24 +83,25 @@ class Resize_Mesh_Operator(bpy.types.Operator):
             for node in mat_nodes:
                 if node.type == 'TEX_IMAGE':
                     print(node.image.size[0])
-                    image_x = node.image.size[0]*0.001
-                    image_y = node.image.size[1]*0.001
+                    image_x = node.image.size[0] * 0.001
+                    image_y = node.image.size[1] * 0.001
 
-            obj.data.vertices[0].co[0] = image_x*-1
+            obj.data.vertices[0].co[0] = image_x * -1
             obj.data.vertices[1].co[0] = image_x
-            obj.data.vertices[2].co[0] = image_x*-1
+            obj.data.vertices[2].co[0] = image_x * -1
             obj.data.vertices[3].co[0] = image_x
 
-            obj.data.vertices[0].co[1] = image_y*-1
-            obj.data.vertices[1].co[1] = image_y*-1
+            obj.data.vertices[0].co[1] = image_y * -1
+            obj.data.vertices[1].co[1] = image_y * -1
             obj.data.vertices[2].co[1] = image_y
             obj.data.vertices[3].co[1] = image_y
-        return{'FINISHED'}
+        return {'FINISHED'}
+
 
 class Rename_Operator(bpy.types.Operator):
     bl_idname = "object.rename"
     bl_label = "Rename"
-    
+
     def execute(self, context):
         obj: bpy.types.Object
 
@@ -98,19 +109,23 @@ class Rename_Operator(bpy.types.Operator):
         act_obj = bpy.context.active_object
         collname = bpy.context.collection.name
 
-        for i,obj in enumerate(bpy.data.collections[act_obj.users_collection[0].name].all_objects):
-            if obj.type=='MESH':
-                obj.name = bpy.data.collections[obj.users_collection[0].name].name+'_'+str(i+1).zfill(2)
-                bpy.data.meshes[obj.to_mesh().name].name = bpy.data.collections[obj.users_collection[0].name].name+'_'+str(i+1).zfill(2)
+        for i, obj in enumerate(bpy.data.collections[act_obj.users_collection[0].name].all_objects):
+            if obj.type == 'MESH':
+                obj.name = bpy.data.collections[obj.users_collection[0].name].name + '_' + str(i + 1).zfill(2)
+                bpy.data.meshes[obj.to_mesh().name].name = bpy.data.collections[
+                                                               obj.users_collection[0].name].name + '_' + str(
+                    i + 1).zfill(2)
                 if len(obj.material_slots) > 1:
-                    MessageBox('Have many material')
+                    messagebox('Have many material')
                 else:
                     print(obj.material_slots)
                     if len(obj.material_slots) == 0:
-                        MessageBox(obj.name + ': ' + 'Not have material')
+                        messagebox(obj.name + ': ' + 'Not have material')
                     else:
-                        bpy.data.materials[obj.material_slots[0].name].name = bpy.data.collections[obj.users_collection[0].name].name
-        return{'FINISHED'}
+                        bpy.data.materials[obj.material_slots[0].name].name = bpy.data.collections[
+                            obj.users_collection[0].name].name
+        return {'FINISHED'}
+
 
 class CleanObjectOperator(bpy.types.Operator):
     bl_idname = "object.cleanobject"
@@ -134,16 +149,18 @@ class CleanObjectOperator(bpy.types.Operator):
                 print("Object has no custom split normals: " + o.name + ", skipping")
         return {'FINISHED'}
 
+
 class ReSetOriginOperator(bpy.types.Operator):
     bl_idname = "object.resetorigin"
     bl_label = "Reset Origin"
 
-    def execute(self,context):
+    def execute(self, context):
         selobj = bpy.context.selected_objects
         for i in selobj:
             bpy.context.view_layer.objects.active = i
             print(bpy.data.objects[i.name_full].dimensions.z)
-        return{'FINISHED'}
+        return {'FINISHED'}
+
 
 #===========================================================================================================
 
@@ -162,7 +179,65 @@ class Translation(bpy.types.Operator):
             except:
                 context.preferences.view.language = "zh_HANS"
             prefview.use_translate_new_dataname = False
-        return{'FINISHED'}
+        return {'FINISHED'}
+
+
+#===========================================================================================================
+class ExportFBX(bpy.types.Operator):
+    bl_idname = "object.exportfbx"
+    bl_label = "导出FBX"
+
+    def execute(self, context):
+        props = context.scene.atbprops
+        exportpath = props.exportpath
+        absexportpath = bpy.path.abspath(exportpath)
+        # 获取当前选中的对象
+        selected_obj = bpy.context.object
+
+        if selected_obj is None:
+            print("没有选中的对象！")
+            return
+
+        # 确保选中的对象是 Mesh 类型
+        if selected_obj.type != 'MESH':
+            print(f"选中的对象不是Mesh类型: {selected_obj.name}")
+            return
+
+        # 获取对象名称作为文件名
+        file_name = selected_obj.name + ".fbx"
+        output_path = os.path.join(absexportpath, file_name)
+
+        # 确保路径的格式和目录存在
+        output_path = os.path.join(absexportpath, file_name)
+        output_path = os.path.normpath(output_path)  # 规范路径格式
+
+        # 确保目录存在
+        output_dir_path = os.path.dirname(output_path)
+        print(output_dir_path)
+        if not os.path.exists(output_dir_path):
+            os.makedirs(output_dir_path)
+
+        # 准备导出的对象列表
+        objects_to_export = [selected_obj]
+
+        # 检查对象是否有子对象，并将 Mesh 类型的子对象加入到导出列表
+        if selected_obj.children:
+            for child in selected_obj.children:
+                if child.type == 'MESH':
+                    objects_to_export.append(child)
+
+        # 选择需要导出的对象
+        bpy.ops.object.select_all(action='DESELECT')  # 取消选择所有对象
+        for obj in objects_to_export:
+            obj.select_set(True)  # 选择对象
+
+        # 导出选中的对象为FBX文件
+        bpy.ops.export_scene.fbx(filepath=output_path, use_selection=True)
+        print(f"导出成功: {output_path}")
+
+        print(output_path)
+        return {'FINISHED'}
+
 
 #===========================================================================================================
 class QuickPhysics_CalcPhysics(bpy.types.Operator):
@@ -270,7 +345,8 @@ class QuickPhysics_CalcPhysics(bpy.types.Operator):
     def modal(self, context, event):
         wm = context.window_manager
         quick_physics = context.window_manager.quick_physics
-        if event.type in {"ESC"} or context.scene.frame_current >= 10000 or not quick_physics.running_physics_calculation:
+        if event.type in {
+            "ESC"} or context.scene.frame_current >= 10000 or not quick_physics.running_physics_calculation:
             self.exit_modal(context, wm)
             return {"CANCELLED"}
         wm.progress_update(context.scene.frame_current)
@@ -321,6 +397,8 @@ class QuickPhysics_ApplyPhysics(bpy.types.Operator):
         context.view_layer.objects.active = active_object
 
         return {'FINISHED'}
+
+
 #===========================================================================================================
 
 class Setstartframe(bpy.types.Operator):
@@ -328,18 +406,17 @@ class Setstartframe(bpy.types.Operator):
     bl_label = "SetStartFrame"
     bl_options = {"REGISTER", "UNDO"}
 
-
     @classmethod
     def poll(cls, context):
         return True
 
     def execute(self, context):
         try:
-            pass # Set Start Frame Script Start
+            pass  # Set Start Frame Script Start
             import bpy
             actscene = bpy.context.scene
             bpy.data.scenes[actscene.name].frame_start = bpy.data.scenes[actscene.name].frame_current
-            pass # Set Start Frame Script End
+            pass  # Set Start Frame Script End
         except Exception as exc:
             print(str(exc) + " | Error in execute function of SetStartFrame")
         return {"FINISHED"}
@@ -357,18 +434,17 @@ class Setendframe(bpy.types.Operator):
     bl_label = "SetEndFrame"
     bl_options = {"REGISTER", "UNDO"}
 
-
     @classmethod
     def poll(cls, context):
         return True
 
     def execute(self, context):
         try:
-            pass # Set End Frame Script Start
+            pass  # Set End Frame Script Start
             import bpy
             actscene = bpy.context.scene
             bpy.data.scenes[actscene.name].frame_end = bpy.data.scenes[actscene.name].frame_current
-            pass # Set End Frame Script End
+            pass  # Set End Frame Script End
         except Exception as exc:
             print(str(exc) + " | Error in execute function of SetEndFrame")
         return {"FINISHED"}
@@ -379,6 +455,7 @@ class Setendframe(bpy.types.Operator):
         except Exception as exc:
             print(str(exc) + " | Error in invoke function of SetEndFrame")
         return self.execute(context)
+
 
 class StopLoop_OP(bpy.types.Operator):
     bl_idname = "object.stoploop"
@@ -398,18 +475,9 @@ class StopLoop_OP(bpy.types.Operator):
         print(list(frame_change))
         return {'FINISHED'}
 
-#===========================================================================================================
-class ATBTestOperator(bpy.types.Operator):
-    bl_idname = "object.atbtestoperator"
-    bl_label = "ATBTestOperator"
-
-    def execute(self, context):
-        print("test")
-        return {'FINISHED'}
-
 classes = (
-    ATB_Panel,
-    Reload_Image_Operator,
+    OptiEVRenderOperator,
+    OptiCYRenderOperator,
     Resize_Mesh_Operator,
     Rename_Operator,
     CleanObjectOperator,
@@ -417,23 +485,26 @@ classes = (
     QuickPhysics_CalcPhysics,
     QuickPhysics_AddActivePhysics,
     QuickPhysics_ApplyPhysics,
-    ATBTestOperator,
     Translation,
     Setstartframe,
     Setendframe,
     StopLoop_OP,
-            )
+    ExportFBX,
+)
+
 
 def register():
     global classes
     for cls in classes:
         register_class(cls)
 
+
 def unregister():
     global classes
     for cls in classes:
         unregister_class(cls)
-        
+
+
 if __name__ == "__main__":
     try:
         unregister()

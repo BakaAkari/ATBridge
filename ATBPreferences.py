@@ -6,26 +6,58 @@ from bpy.types import AddonPreferences, PropertyGroup
 from bpy.utils import register_class, unregister_class
 import zipfile
 import os
+import sys
+
 
 class ATB_AddonPreferences(AddonPreferences):
     bl_idname = __package__
 
     def draw(self, context):
         layout: bpy.types.UILayout
-        
+
         props = context.scene.atbprops
         layout = self.layout
         col = layout.column(align=True)
         box = col.box()
         col = box.column(align=True)
-        col.prop(props, 'addonaddress', text="Plugins Location")
-        col.operator('object.atbimportaddons', text='Update Plugins')
-        col.operator(ATB_DefaultSetting.bl_idname,text="Optimize Blender settings")
-        
+        # col.prop(props, 'addonaddress', text="Plugins Location")
+        # col.operator('object.atbimportaddons', text='Update Plugins')
+        col.operator('object.atbcheckpil', text='检查PIL库')
+        col.operator('object.atbinstallpil', text='安装PIL库')
+        col.operator(ATB_DefaultSetting.bl_idname, text="Optimize Blender settings")
+
+class ATB_CheckPIL(bpy.types.Operator):
+    bl_idname = "object.atbcheckpil"
+    bl_label = "检查PIL库"
+
+    def execute(self, context):
+        print(sys.modules.get('PIL'))
+        print("test")
+
+        return{'FINISHED'}
+
+class ATB_InstallPIL(bpy.types.Operator):
+    bl_idname = "object.atbinstallpil"
+    bl_label = "安装PIL库"
+
+    def execute(self, context):
+        try:
+            import subprocess
+
+            subprocess.run(['pip', 'install', 'pillow'])
+
+            import PIL
+
+            print("PIL (Pillow) is installed")
+        except ImportError:
+            print("PIL (Pillow) is not installed")
+
+        return {'FINISHED'}
+
 # class ATB_ImportAddons(bpy.types.Operator):
 #     bl_idname = "object.atbimportaddons"
 #     bl_label = "更新插件库"
-    
+
 #     def execute(self, context):
 #         keys = []
 #         newaddonfilepath = context.scene.atbprops.addonaddress
@@ -83,11 +115,10 @@ class ATB_DefaultSetting(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return True
-    
 
     def execute(self, context):
-#=====================================================================================
-#设置machin3tools默认配置
+        #=====================================================================================
+        #设置machin3tools默认配置
         if 'MACHIN3tools' in bpy.context.preferences.addons:
             addonpre = bpy.context.preferences.addons['MACHIN3tools'].preferences
             addonpre.activate_smart_vert = True
@@ -129,9 +160,9 @@ class ATB_DefaultSetting(bpy.types.Operator):
         else:
             print("MACHIN3tools missing")
 
-#=====================================================================================
-#复制指定目录里的配置文件至配置文件夹内
-#已废弃
+        #=====================================================================================
+        #复制指定目录里的配置文件至配置文件夹内
+        #已废弃
         # newaddonfilepath = context.scene.addonprops.vgtautoipdatepath
         # blenderaddonpath = __file__.split('\\')
         # # print(newaddonfilepath)
@@ -139,42 +170,42 @@ class ATB_DefaultSetting(bpy.types.Operator):
         # targetF = '\\'.join(blenderaddonpath[:-4])+'\\config'
         # shutil.copytree(sourceF,targetF)
 
-#=====================================================================================
-# 设置cycles渲染设备
+        #=====================================================================================
+        # 设置cycles渲染设备
         cyclespref = bpy.context.preferences.addons['cycles'].preferences
         cyclespref.compute_device_type = 'OPTIX'
 
-#修改默认配置选项至可用状态
+        #修改默认配置选项至可用状态
         prefview = context.preferences.view
         prefsys = context.preferences.system
         prefinp = context.preferences.inputs
         prefedit = context.preferences.edit
-#界面设置
+        #界面设置
         prefview.show_developer_ui = True
         prefview.show_tooltips_python = True
         prefview.show_statusbar_memory = True
         prefview.show_statusbar_stats = True
         prefview.show_statusbar_vram = True
-#视图设置 
+        #视图设置
         prefview.show_object_info = False
         prefview.show_view_name = False
         prefsys.viewport_aa = "32"
         prefsys.anisotropic_filter = "FILTER_16"
-#视图切换设置
+        #视图切换设置
         prefinp.use_mouse_depth_navigate = True
 
         context.preferences.view.language = "zh_HANS"
         prefview.use_translate_new_dataname = False
-#系统设置
+        #系统设置
         prefedit.undo_steps = 256
 
-#=====================================================================================
-#存储用户设置
+        #=====================================================================================
+        #存储用户设置
         bpy.ops.preferences.associate_blend()
         bpy.ops.wm.save_userpref()
 
-#=====================================================================================
-# 设置快捷键
+        #=====================================================================================
+        # 设置快捷键
         # winmankeys = bpy.data.window_managers["WinMan"].keyconfigs
         # wm = bpy.context.window_manager
         # kc = wm.keyconfigs.addon
@@ -217,22 +248,23 @@ class ATB_DefaultSetting(bpy.types.Operator):
         # # def update_activate_shading_pie(self, context):
         # #     activate(self, register=self.activate_shading_pie, tool="shading_pie")
 
-
-        return{'FINISHED'}
-
+        return {'FINISHED'}
 
     def invoke(self, context, event):
         return context.window_manager.invoke_confirm(self, event)
 
+
 #=====================================================================================
 
 
-classes = (ATB_AddonPreferences, ATB_DefaultSetting)
+classes = (ATB_CheckPIL, ATB_InstallPIL, ATB_AddonPreferences, ATB_DefaultSetting)
+
 
 def register():
     global classes
     for cls in classes:
         register_class(cls)
+
 
 def unregister():
     global classes
