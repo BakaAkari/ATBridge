@@ -38,7 +38,7 @@ def register():
     ATBPanel.register()
     ATBridge.register()
 
-    bpy.types.Scene.atbprops = PointerProperty(type=AtbPropgroup)
+    bpy.types.WindowManager.atbprops = PointerProperty(type=AtbPropgroup)
     bpy.types.WindowManager.quick_physics = PointerProperty(type=AtbPropgroup)
     bpy.types.STATUSBAR_HT_header.append(ATBFunctions.translationui)
     bpy.types.DOPESHEET_HT_header.append(ATBFunctions.setframe)
@@ -55,7 +55,7 @@ def unregister():
     ATBPanel.unregister()
     ATBridge.unregister()
 
-    del bpy.types.Scene.atbprops
+    del bpy.types.WindowManager.atbprops
     del bpy.types.WindowManager.quick_physics
     bpy.types.STATUSBAR_HT_header.remove(ATBFunctions.translationui)
     bpy.types.DOPESHEET_HT_header.remove(ATBFunctions.setframe)

@@ -3,7 +3,14 @@ import bpy
 from bpy.types import Context
 from bpy.utils import register_class, unregister_class
 from .ATBFunctions import *
+from .ATBProps import *
 from mathutils import Matrix
+
+import os
+import PIL
+from bpy.types import Node, Operator, NodeTree
+from bpy.props import StringProperty, EnumProperty, IntProperty
+
 # from PIL import Image
 
 
@@ -94,8 +101,6 @@ class ChangeProjectionOperator(bpy.types.Operator):
 # This class is invoked whenever a new asset is set from Bridge.
 
 #===========================================================================================================
-
-
 class Reload_Image_Operator(bpy.types.Operator):
     bl_idname = "object.reloadimage"
     bl_label = "Reload Image"
@@ -110,63 +115,87 @@ class Reload_Image_Operator(bpy.types.Operator):
         return {'FINISHED'}
 
 #===========================================================================================================
-class ATBTestOperator(bpy.types.Operator):
-    bl_idname = "object.atbtestoperator"
-    bl_label = "ATBTestOperator"
+class MergeBridgeTexOperator(bpy.types.Operator):
+    bl_idname = "object.mergebridgetex"
+    bl_label = "Merge Bridge Tex"
 
     def execute(self, context):
         actmat = bpy.context.active_object.active_material
         actnodetree = bpy.data.materials[actmat.name].node_tree
 
-        ColTexList = []
-        ORMTexList = []
+        ColNodeList = []
+        ORMNodeList = []
+        NrmNodeList = []
+        DisNodeList = []
 
         for node in actnodetree.nodes:
             if node.type == "TEX_IMAGE":
                 # 获取Albedo节点和贴图
                 if node.name == "Color Tex Node":
                     colornode = node
-                    ColTexList.append(colornode)
+                    ColNodeList.append(colornode)
+                    parts = colornode.image.name.split('_')
+                    BID = parts[0]
 
                 # 获取AO节点和贴图
                 if node.name == "AO Tex Node":
                     aonode = node
-                    ORMTexList.append(aonode)
+                    ORMNodeList.append(aonode)
 
                 # 获取Roughness节点和贴图
                 if node.name == "Roughness Tex Node":
                     roughnessnode = node
-                    ORMTexList.append(roughnessnode)
+                    ORMNodeList.append(roughnessnode)
 
                 # 获取Metalness节点和贴图
                 if node.name == "Metalness Tex Node":
                     metalnessnode = node
-                    ORMTexList.append(metalnessnode)
+                    ORMNodeList.append(metalnessnode)
 
                 # 获取Normal节点和贴图
                 if node.name == "Normal Tex Node":
                     normalnode = node
+                    NrmNodeList.append(normalnode)
 
                 # 获取Opacity节点和贴图
                 if node.name == "Opacity Tex Node":
                     opacitynode = node
-                    ColTexList.append(opacitynode)
+                    ColNodeList.append(opacitynode)
 
                 # 获取Displacement节点和贴图
                 if node.name == "Displacement Tex Node":
                     displacementnode = node
-
-        for ColTex in ColTexList:
-            print(ColTex.image.filepath)
-            img = Image.open(ColTex.image.filepath)
+                    DisNodeList.append(displacementnode)
+                    
+        if ColNodeList:
+            PILMergeCol(BID, ColNodeList)
+            NewTexPath = PILMergeORM(BID, ORMNodeList)
+            OrganizeImages(BID, NrmNodeList, DisNodeList)
+            OpenSysDir(NewTexPath)
+        else:
+            messagebox(message="Not Bridge Material", title="WARNING", icon='INFO')
         return {'FINISHED'}
 
+#===========================================================================================================
+class ATBTestOperator(bpy.types.Operator):
+    bl_idname = "object.atbtestoperator"
+    bl_label = "ATBTestOperator"
+
+    def execute(self, context):
+        print("Test")
+        return {'FINISHED'}
+    
+#===========================================================================================================
+
+
+#===========================================================================================================
 
 classes = (
     # FixBridgeToolsPanel,
     AddSubdivisionOperator,
     ChangeProjectionOperator,
     Reload_Image_Operator,
+    MergeBridgeTexOperator,
     ATBTestOperator,
 )
 

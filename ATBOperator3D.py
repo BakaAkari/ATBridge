@@ -24,22 +24,15 @@ class OptiEVRenderOperator(bpy.types.Operator):
         #AO
         bpy.context.scene.eevee.use_gtao = True
         bpy.context.scene.eevee.gtao_quality = 1
-        #辉光
-        bpy.context.scene.eevee.use_bloom = True
-        #景深
-        bpy.context.scene.eevee.use_bokeh_high_quality_slight_defocus = True
-        bpy.context.scene.eevee.use_bokeh_jittered = True
-        #屏幕空间反射
-        bpy.context.scene.eevee.use_ssr = True
+        #光线追踪
+        bpy.context.scene.eevee.use_raytracing = True
         #体积
         bpy.context.scene.eevee.volumetric_tile_size = '4'
         bpy.context.scene.eevee.volumetric_sample_distribution = 1
         bpy.context.scene.eevee.use_volumetric_shadows = True
         bpy.context.scene.eevee.volumetric_shadow_samples = 64
         #阴影
-        bpy.context.scene.eevee.shadow_cube_size = '2048'
-        bpy.context.scene.eevee.shadow_cascade_size = '2048'
-        bpy.context.scene.eevee.use_shadow_high_bitdepth = True
+        bpy.context.scene.eevee.shadow_ray_count = 3
         #高品质法线
         bpy.context.scene.render.use_high_quality_normals = True
         #色彩管理
@@ -116,11 +109,11 @@ class Rename_Operator(bpy.types.Operator):
                                                                obj.users_collection[0].name].name + '_' + str(
                     i + 1).zfill(2)
                 if len(obj.material_slots) > 1:
-                    messagebox('Have many material')
+                    messagebox('Have many material', title="WARNING", icon='INFO')
                 else:
                     print(obj.material_slots)
                     if len(obj.material_slots) == 0:
-                        messagebox(obj.name + ': ' + 'Not have material')
+                        messagebox(obj.name + ': ' + 'Not have material', title="WARNING", icon='INFO')
                     else:
                         bpy.data.materials[obj.material_slots[0].name].name = bpy.data.collections[
                             obj.users_collection[0].name].name
@@ -188,54 +181,42 @@ class ExportFBX(bpy.types.Operator):
     bl_label = "导出FBX"
 
     def execute(self, context):
-        props = context.scene.atbprops
+        wm = context.window_manager
+        props = wm.atbprops
         exportpath = props.exportpath
         absexportpath = bpy.path.abspath(exportpath)
         # 获取当前选中的对象
-        selected_obj = bpy.context.object
+        selected_objs = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
 
-        if selected_obj is None:
+        if selected_objs is None:
             print("没有选中的对象！")
             return
 
-        # 确保选中的对象是 Mesh 类型
-        if selected_obj.type != 'MESH':
-            print(f"选中的对象不是Mesh类型: {selected_obj.name}")
-            return
+        # 逐个导出选中的对象为FBX文件
+        for obj in selected_objs:
+            # 获取对象名称作为文件名
+            file_name = obj.name + ".fbx"
+            output_path = os.path.join(absexportpath, file_name)
 
-        # 获取对象名称作为文件名
-        file_name = selected_obj.name + ".fbx"
-        output_path = os.path.join(absexportpath, file_name)
+            # 确保路径的格式和目录存在
+            output_path = os.path.normpath(output_path)  # 规范路径格式
 
-        # 确保路径的格式和目录存在
-        output_path = os.path.join(absexportpath, file_name)
-        output_path = os.path.normpath(output_path)  # 规范路径格式
+            # 确保目录存在
+            output_dir_path = os.path.dirname(output_path)
+            if not os.path.exists(output_dir_path):
+                os.makedirs(output_dir_path)
 
-        # 确保目录存在
-        output_dir_path = os.path.dirname(output_path)
-        print(output_dir_path)
-        if not os.path.exists(output_dir_path):
-            os.makedirs(output_dir_path)
+            # 选择当前对象
+            bpy.ops.object.select_all(action='DESELECT')  # 取消选择所有对象
+            obj.select_set(True)  # 选择当前对象
 
-        # 准备导出的对象列表
-        objects_to_export = [selected_obj]
+            # 导出当前对象为FBX文件
+            if props.export_rule == 'UNREAL':
+                bpy.ops.export_scene.fbx(filepath=output_path, use_selection=True, bake_space_transform=False, axis_forward='-Z', axis_up='Y')
+            elif props.export_rule == 'UNITY':
+                bpy.ops.export_scene.fbx(filepath=output_path, use_selection=True, bake_space_transform=True, axis_forward='-X', axis_up='Y')
+            print(f"导出成功: {output_path}")
 
-        # 检查对象是否有子对象，并将 Mesh 类型的子对象加入到导出列表
-        if selected_obj.children:
-            for child in selected_obj.children:
-                if child.type == 'MESH':
-                    objects_to_export.append(child)
-
-        # 选择需要导出的对象
-        bpy.ops.object.select_all(action='DESELECT')  # 取消选择所有对象
-        for obj in objects_to_export:
-            obj.select_set(True)  # 选择对象
-
-        # 导出选中的对象为FBX文件
-        bpy.ops.export_scene.fbx(filepath=output_path, use_selection=True)
-        print(f"导出成功: {output_path}")
-
-        print(output_path)
         return {'FINISHED'}
 
 
@@ -474,7 +455,18 @@ class StopLoop_OP(bpy.types.Operator):
 
         print(list(frame_change))
         return {'FINISHED'}
+#===========================================================================================================
+class ATB3DTestOperator(bpy.types.Operator):
+    bl_idname = "object.atb3dtestoperator"
+    bl_label = "ATBTestOperator"
 
+    def execute(self, context):
+        actmat = bpy.context.active_object.active_material
+        return {'FINISHED'}
+
+
+
+#===========================================================================================================
 classes = (
     OptiEVRenderOperator,
     OptiCYRenderOperator,
@@ -490,6 +482,7 @@ classes = (
     Setendframe,
     StopLoop_OP,
     ExportFBX,
+    ATB3DTestOperator,
 )
 
 

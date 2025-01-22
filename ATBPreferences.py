@@ -4,9 +4,9 @@ from bpy.props import (BoolProperty, CollectionProperty, EnumProperty,
                        StringProperty)
 from bpy.types import AddonPreferences, PropertyGroup
 from bpy.utils import register_class, unregister_class
-import zipfile
-import os
+import subprocess
 import sys
+import pip
 
 
 class ATB_AddonPreferences(AddonPreferences):
@@ -14,44 +14,35 @@ class ATB_AddonPreferences(AddonPreferences):
 
     def draw(self, context):
         layout: bpy.types.UILayout
-
-        props = context.scene.atbprops
+        
+        wm = context.window_manager
+        props = wm.atbprops
         layout = self.layout
         col = layout.column(align=True)
         box = col.box()
         col = box.column(align=True)
         # col.prop(props, 'addonaddress', text="Plugins Location")
         # col.operator('object.atbimportaddons', text='Update Plugins')
-        col.operator('object.atbcheckpil', text='检查PIL库')
-        col.operator('object.atbinstallpil', text='安装PIL库')
+        col.operator('object.atbinstallpil', text='Install PIL')
         col.operator(ATB_DefaultSetting.bl_idname, text="Optimize Blender settings")
-
-class ATB_CheckPIL(bpy.types.Operator):
-    bl_idname = "object.atbcheckpil"
-    bl_label = "检查PIL库"
-
-    def execute(self, context):
-        print(sys.modules.get('PIL'))
-        print("test")
-
-        return{'FINISHED'}
 
 class ATB_InstallPIL(bpy.types.Operator):
     bl_idname = "object.atbinstallpil"
     bl_label = "安装PIL库"
+    
+    _message = ""  # 保存当前要显示的消息内容
 
+    @classmethod
+    def poll(cls, context):
+        return True
+    
     def execute(self, context):
         try:
-            import subprocess
-
-            subprocess.run(['pip', 'install', 'pillow'])
-
+            pip.main(['install', 'pillow'])
             import PIL
-
-            print("PIL (Pillow) is installed")
-        except ImportError:
-            print("PIL (Pillow) is not installed")
-
+            self.report({'INFO'}, "Pillow 已成功安装")
+        except Exception as e:
+            self.report({'ERROR'}, f"Pillow 安装失败：{e}")
         return {'FINISHED'}
 
 # class ATB_ImportAddons(bpy.types.Operator):
@@ -257,7 +248,7 @@ class ATB_DefaultSetting(bpy.types.Operator):
 #=====================================================================================
 
 
-classes = (ATB_CheckPIL, ATB_InstallPIL, ATB_AddonPreferences, ATB_DefaultSetting)
+classes = (ATB_InstallPIL, ATB_AddonPreferences, ATB_DefaultSetting)
 
 
 def register():

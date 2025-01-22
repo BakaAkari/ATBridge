@@ -50,24 +50,37 @@ class AtbPropgroup(PropertyGroup):
                ('OP3', "Option 3", ""),
                ]
     ) # type: ignore
-
+    
+    export_rule: EnumProperty(
+        items=[
+            ('UNREAL', "Unreal", "Export as Unreal Engine rules"),
+            ('UNITY', "Unity", "Export as Unity Engine rules"),
+        ],
+        name="Export Rule",
+        description="Select an option",
+    ) # type: ignore
+    
     physics_friction: FloatProperty(
         description="Friction",
         default=0.5,
         min=0.0, max=1.0
     ) # type: ignore
+    
     physics_time_scale: FloatProperty(
         description="Simulation speed",
         default=5.0, min=0.0, max=20.0
     ) # type: ignore
+    
     is_running_physics: BoolProperty(
         description="",
         default=False
     ) # type: ignore
+    
     running_physics_calculation: BoolProperty(
         description="",
         default=False
     ) # type: ignore
+    
     exportpath: StringProperty(
         name='Export Path',
         description='',
@@ -75,7 +88,12 @@ class AtbPropgroup(PropertyGroup):
         default='',
         subtype='DIR_PATH'  # 指定为目录路径
     ) # type: ignore
-
+    
+    movetexlocation: BoolProperty(
+        description="",
+        default=True
+    ) # type: ignore
+    
     #     maxlen=1024,
     #     subtype='FILE_PATH'
     #     )
@@ -87,6 +105,7 @@ class AtbPropgroup(PropertyGroup):
     #     subtype='DIR_PATH'
     #     )
 
+#===========================================================================================================
 
 classes = (AtbPropgroup,
            )

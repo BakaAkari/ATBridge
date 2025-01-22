@@ -14,43 +14,48 @@ class AtbPanel3D(bpy.types.Panel):
     bl_category = "Tool"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_options = {'DEFAULT_CLOSED'}
-    bl_order = 999
+    bl_order = 80
+
+    
+    # bl_options = {'DEFAULT_CLOSED'}
+    
 
     @classmethod
     def poll(cls, context):
         return context.object is not None
 
     def draw_header(self, context):
-        self.layout.label(text="", icon="TRIA_RIGHT")
+        self.layout.label(text="", icon='DOT')
 
     def draw(self, context):
-        props = context.scene.atbprops
         wm = context.window_manager
+        props = wm.atbprops
+        
 
         layout = self.layout
-        
-        header, render = layout.panel("render_panel", default_closed=True)
+
+        # layout.operator("object.atb3dtestoperator", text="Test Operator")
+
+        header, render = layout.panel("render_panel", default_closed=False)
         header.label(text="Render Settings")
         if render:
-            render_box = layout.box()
+            render_box = render.box()
             render_column = render_box.column()
-            render_column.label(text='Render Settings')
             render_row = render_column.row()
             render_row.operator('object.optievrender', text="EEVEE Best")
             render_row.operator('object.opticyrender', text="Cycles Best")
 
-        header, export = layout.panel("export_panel", default_closed=True)
+        header, export = layout.panel("export_panel", default_closed=False)
         header.label(text="Export Operator")
         if export:
             export_box = export.box()
             export_column = export_box.column()
-            export_column.label(text='Export Operator')
+            export_column.prop(props, 'export_rule', text="Export Rule")
             export_column.prop(props, 'exportpath', text="Export Location")
             export_column.operator('object.exportfbx', text='Export Object')
 
-        header, object = layout.panel("object_panel", default_closed=True)
-        header.label(text="object Operator")
+        header, object = layout.panel("object_panel", default_closed=False)
+        header.label(text="Object Operator")
         if object:
             object_box = object.box()
             object_column = object_box.column()
@@ -59,7 +64,7 @@ class AtbPanel3D(bpy.types.Panel):
             # object_column.operator('object.resetorigin', text='Reset Origin')
             object_column.operator('object.cleanobject', text='Clean Object')
 
-        header, image = layout.panel("image_panel", default_closed=True)
+        header, image = layout.panel("image_panel", default_closed=False)
         header.label(text="image Operator")
         if image:
             image_box = image.box()
@@ -69,11 +74,11 @@ class AtbPanel3D(bpy.types.Panel):
             image_column.operator('object.reloadimage', text='Reload Images')
             image_column.operator('object.resizemesh', text='Resize Mesh')
 
-        header, physics = layout.panel("physics_panel", default_closed=True)
+        header, physics = layout.panel("physics_panel", default_closed=False)
         header.label(text="Quick Physics")
         if physics:
             row = physics.row()
-            physics_box = layout.box()
+            physics_box = row.box()
             physics_column = physics_box.column()
             physics_column.label(text='Quick Physics')
             physics_column.prop(wm.quick_physics, 'physics_friction', text="Friction", slider=True)
@@ -92,9 +97,13 @@ class AtbPanelNode(bpy.types.Panel):
     bl_order = 15
 
     # bl_options = {'DEFAULT_CLOSED'}
-
+    
+    def draw_header(self, context):
+        self.layout.label(text="", icon='DOT')
+    
     def draw(self, context):
         act_obj: bpy.types.Object
+        wm = context.window_manager
 
         layout = self.layout
         act_obj = bpy.context.active_object
@@ -102,21 +111,47 @@ class AtbPanelNode(bpy.types.Panel):
         if act_obj.active_material:
             nodes = act_obj.active_material.node_tree.nodes
 
-        layout.operator('object.changeprojection', text="切换映射方式")
-        layout.operator('object.addsubd', text="开启曲面细分")
+        header, image = layout.panel("ATB_panel", default_closed=False)
+        header.label(text="ATB Operator")
+        if image:
+            image_box = image.box()
+            image_column = image_box.column()
+            image_row = image_column.row()
+            image_row.operator('object.changeprojection', text="切换映射方式")
+            image_row.operator('object.addsubd', text="开启曲面细分")
 
-        # 创建节点参数控制滑竿
+        
+        header, image = layout.panel("image_panel", default_closed=False)
+        header.label(text="image Operator")
+        if image:
+            image_box = image.box()
+            image_column = image_box.column()
+            image_row = image_column.row()
+            image_row.operator('object.reloadimage', text='Reload Images')
+            image_row.operator('object.resizemesh', text='Resize Mesh')
+            second_row = image_column.row()
+
+
         try:
             if act_obj.active_material and nodes['Tiling Scale']:
-                layout.prop(nodes['Tiling Scale'].outputs['Value'], "default_value", text='Tiling Scale')
+                header, bridge = layout.panel("bridge_panel", default_closed=False)
+                header.label(text="Bridge Operator")
+                if bridge:
+                    bridge_box = bridge.box()
+                    bridge_column = bridge_box.column()
+                    bridge_row = bridge_column.row()
+                    bridge_column.prop(nodes['Tiling Scale'].outputs['Value'], "default_value", text='Tiling Scale')
+                    bridge_column.prop(nodes['Bump Strength'].outputs['Value'], "default_value", text='Bump Strength')
+                    
+                    header, merge = layout.panel("merge_panel", default_closed=True)
+                    header.label(text="ORM Texture Workflow")
+                    if merge:
+                        merge.label(text="Use ORM workflow to merge textures")
+                        merge.label(text="The merged textures in the Blender file path")
+                        merge.operator('object.mergebridgetex', text='Merge Bridge Texture')
         except:
             pass
-        try:
-            if act_obj.active_material and nodes['Bump Strength']:
-                layout.prop(nodes['Bump Strength'].outputs['Value'], "default_value", text='Bump Strength')
-        except:
-            pass
-        layout.operator('object.atbtestoperator', text="测试按钮")
+        # layout.operator('object.atbtestoperator', text="测试按钮")
 
 classes = (
     AtbPanel3D,
