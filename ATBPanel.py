@@ -108,8 +108,10 @@ class AtbPanelNode(bpy.types.Panel):
         layout = self.layout
         act_obj = bpy.context.active_object
         nodes = None
-        if act_obj.active_material:
+        if act_obj:
             nodes = act_obj.active_material.node_tree.nodes
+        else:
+            return
 
         header, image = layout.panel("ATB_panel", default_closed=False)
         header.label(text="ATB Operator")
@@ -142,13 +144,16 @@ class AtbPanelNode(bpy.types.Panel):
                     bridge_row = bridge_column.row()
                     bridge_column.prop(nodes['Tiling Scale'].outputs['Value'], "default_value", text='Tiling Scale')
                     bridge_column.prop(nodes['Bump Strength'].outputs['Value'], "default_value", text='Bump Strength')
-                    
-                    header, merge = layout.panel("merge_panel", default_closed=True)
-                    header.label(text="ORM Texture Workflow")
-                    if merge:
-                        merge.label(text="Use ORM workflow to merge textures")
-                        merge.label(text="The merged textures in the Blender file path")
-                        merge.operator('object.mergebridgetex', text='Merge Bridge Texture')
+        except:
+            pass
+        
+        try:
+            header, merge = layout.panel("merge_panel", default_closed=True)
+            header.label(text="ORM Texture Workflow")
+            if merge:
+                merge.label(text="Use ORM workflow to merge textures")
+                merge.label(text="The merged textures in the Blender file path")
+                merge.operator('object.mergebridgetex', text='Merge Bridge Texture')
         except:
             pass
         # layout.operator('object.atbtestoperator', text="测试按钮")

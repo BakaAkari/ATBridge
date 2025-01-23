@@ -154,18 +154,23 @@ def PILMergeORM(BID, ORMNodeList):
     for ORMNode in ORMNodeList:
         if ORMNode.name == "AO Tex Node":
             AOTex = Image.open(ORMNode.image.filepath)
-            TexName = ORMNode.image.name.replace("AO", "ORM")
         if ORMNode.name == "Roughness Tex Node":
             RoughnessTex = Image.open(ORMNode.image.filepath)
+            TexName = ORMNode.image.name.replace("Roughness", "ORM")
         if ORMNode.name == "Metalness Tex Node":
             MetalnessTex = Image.open(ORMNode.image.filepath)
             
-    if AOTex and RoughnessTex:
-        if MetalnessTex:
-            NewORMTex = Image.merge("RGB", (AOTex.split()[0], RoughnessTex.split()[0], MetalnessTex.split()[0]))
+    if RoughnessTex:
+        if AOTex:
+            if MetalnessTex:
+                NewORMTex = Image.merge("RGB", (AOTex.split()[0], RoughnessTex.split()[0], MetalnessTex.split()[0]))
+            else:
+                NewORMTex = Image.merge("RGB", (AOTex.split()[0], RoughnessTex.split()[0], Image.new('L', RoughnessTex.size, 0)))
         else:
-            NewORMTex = Image.merge("RGB", (AOTex.split()[0], RoughnessTex.split()[0], Image.new('L', AOTex.size, 0)))
-    
+            NewORMTex = Image.merge("RGB", (Image.new('L', RoughnessTex.size, 256), RoughnessTex.split()[0], Image.new('L', RoughnessTex.size, 0)))
+    else:
+        pass
+            
     blend_file_path = bpy.data.filepath
     if blend_file_path:
         blend_file_directory = os.path.dirname(blend_file_path)
