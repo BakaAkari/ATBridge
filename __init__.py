@@ -9,7 +9,7 @@ bl_info = {
     "name": "ATBridge",
     "description": "Akari Toolkit integrates the optimized Quixel Bridge plugin suite.",
     "author": "Akari",
-    "version": (0, 1, 4),
+    "version": (0, 1, 5),
     "blender": (4, 3, 0),
     "location": "View3D",
     "warning": "Multiple functions are in beta",  # used for warning icon and text in addons panel
