@@ -1,18 +1,7 @@
-import typing
 import bpy
-from bpy.types import Context
 from bpy.utils import register_class, unregister_class
 from .ATBFunctions import *
 from .ATBProps import *
-from mathutils import Matrix
-
-import os
-import PIL
-from bpy.types import Node, Operator, NodeTree
-from bpy.props import StringProperty, EnumProperty, IntProperty
-
-# from PIL import Image
-
 
 class AddSubdivisionOperator(bpy.types.Operator):
     bl_idname = "object.addsubd"
@@ -115,9 +104,18 @@ class Reload_Image_Operator(bpy.types.Operator):
         return {'FINISHED'}
 
 #===========================================================================================================
+#自动合并Bridge ORM流程贴图
+#===========================================================================================================
 class MergeBridgeTexOperator(bpy.types.Operator):
     bl_idname = "object.mergebridgetex"
     bl_label = "Merge Bridge Tex"
+
+    # try:
+    #     from PIL import Image
+    # except ImportError:
+    #     # 如果导入失败，打印错误信息并跳过导入
+    #     messagebox(message="PIL library not installed. Install it on the plugin settings page", title="WARNING", icon='INFO')
+    #     pass
 
     def execute(self, context):
         actmat = bpy.context.active_object.active_material
@@ -168,8 +166,8 @@ class MergeBridgeTexOperator(bpy.types.Operator):
                     DisNodeList.append(displacementnode)
                     
         if ColNodeList:
-            PILMergeCol(BID, ColNodeList)
-            NewTexPath = PILMergeORM(BID, ORMNodeList)
+            BridgePILMergeCol(BID, ColNodeList)
+            NewTexPath = BridgePILMergeORM(BID, ORMNodeList)
             OrganizeImages(BID, NrmNodeList, DisNodeList)
             OpenSysDir(NewTexPath)
         else:
@@ -177,6 +175,210 @@ class MergeBridgeTexOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 #===========================================================================================================
+#手动合并ORM流程贴图
+#===========================================================================================================
+class MarkColTex(bpy.types.Operator):
+    bl_idname = "object.markcoltex"
+    bl_label = "Mark Col"
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        actmat = bpy.context.active_object.active_material
+        actnodetree = bpy.data.materials[actmat.name].node_tree
+        for node in actnodetree.nodes:
+            if node.select:
+                if node.type == 'TEX_IMAGE':
+                    wm.atbprops.col_tex_name = node.image.name
+                else:
+                    messagebox(message="没有选中贴图节点", title="WARNING", icon='INFO')
+        return {'FINISHED'}
+class DelColTex(bpy.types.Operator):
+    bl_idname = "object.delcoltex"
+    bl_label = ""
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        wm.atbprops.col_tex_name = ""
+        return {'FINISHED'}
+
+#===========================================================================================================
+class MarkOpaTex(bpy.types.Operator):
+    bl_idname = "object.markopatex"
+    bl_label = "Mark Opa"
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        actmat = bpy.context.active_object.active_material
+        actnodetree = bpy.data.materials[actmat.name].node_tree
+        for node in actnodetree.nodes:
+            if node.select:
+                if node.type == 'TEX_IMAGE':
+                    wm.atbprops.opa_tex_name = node.image.name
+                else:
+                    messagebox(message="没有选中贴图节点", title="WARNING", icon='INFO')
+        return {'FINISHED'}
+class DelOpaTex(bpy.types.Operator):
+    bl_idname = "object.delopatex"
+    bl_label = ""
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        wm.atbprops.opa_tex_name = ""
+        return {'FINISHED'}
+#===========================================================================================================
+class MarkRoughTex(bpy.types.Operator):
+    bl_idname = "object.markroughtex"
+    bl_label = "Mark Rough"
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        actmat = bpy.context.active_object.active_material
+        actnodetree = bpy.data.materials[actmat.name].node_tree
+        for node in actnodetree.nodes:
+            if node.select:
+                if node.type == 'TEX_IMAGE':
+                    wm.atbprops.rough_tex_name = node.image.name
+                else:
+                    messagebox(message="没有选中贴图节点", title="WARNING", icon='INFO')
+        return {'FINISHED'}
+class DelRoughTex(bpy.types.Operator):
+    bl_idname = "object.delroughtex"
+    bl_label = ""
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        wm.atbprops.rough_tex_name = ""
+        return {'FINISHED'}
+#===========================================================================================================
+class MarkMetalTex(bpy.types.Operator):
+    bl_idname = "object.markmetaltex"
+    bl_label = "Mark Metallic"
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        actmat = bpy.context.active_object.active_material
+        actnodetree = bpy.data.materials[actmat.name].node_tree
+        for node in actnodetree.nodes:
+            if node.select:
+                if node.type == 'TEX_IMAGE':
+                    wm.atbprops.metal_tex_name = node.image.name
+                else:
+                    messagebox(message="没有选中贴图节点", title="WARNING", icon='INFO')
+        return {'FINISHED'}
+class DelMetalTex(bpy.types.Operator):
+    bl_idname = "object.delmetaltex"
+    bl_label = ""
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        wm.atbprops.metal_tex_name = ""
+        return {'FINISHED'}
+#===========================================================================================================
+class MarkAOTex(bpy.types.Operator):
+    bl_idname = "object.markaotex"
+    bl_label = "Mark AO"
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        actmat = bpy.context.active_object.active_material
+        actnodetree = bpy.data.materials[actmat.name].node_tree
+        for node in actnodetree.nodes:
+            if node.select:
+                if node.type == 'TEX_IMAGE':
+                    wm.atbprops.ao_tex_name = node.image.name
+                else:    
+                    messagebox(message="没有选中贴图节点", title="WARNING", icon='INFO')    
+        return {'FINISHED'}
+class DelAOTex(bpy.types.Operator):
+    bl_idname = "object.delaotex"
+    bl_label = ""
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        wm.atbprops.ao_tex_name = ""
+        return {'FINISHED'}
+#===========================================================================================================
+    
+class MarkNorTex(bpy.types.Operator):
+    bl_idname = "object.marknortex"
+    bl_label = "Mark Normal"
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        actmat = bpy.context.active_object.active_material
+        actnodetree = bpy.data.materials[actmat.name].node_tree
+        for node in actnodetree.nodes:
+            if node.select:
+                if node.type == 'TEX_IMAGE':
+                    wm.atbprops.nor_tex_name = node.image.name
+                else:
+                    messagebox(message="没有选中贴图节点", title="WARNING", icon='INFO')
+        return {'FINISHED'}
+class DelNorTex(bpy.types.Operator):
+    bl_idname = "object.delnortex"
+    bl_label = ""
+
+    def execute(self, context):
+        wm = bpy.context.window_manager
+        wm.atbprops.nor_tex_name = ""
+        return {'FINISHED'}
+#===========================================================================================================
+class ManualMergeTexOperator(bpy.types.Operator):
+    bl_idname = "object.manualmergetex"
+    bl_label = "Manual Merge Tex"
+
+    def execute(self, context):
+        actmat = bpy.context.active_object.active_material
+        actnodetree = bpy.data.materials[actmat.name].node_tree
+        wm = bpy.context.window_manager
+
+        ManualColNodeList = []
+        ManualORMNodeList = []
+        ManualNrmNodeList = []
+
+        for node in actnodetree.nodes:
+            if node.type == "TEX_IMAGE":
+                # 获取Albedo节点和贴图
+                if node.image.name == wm.atbprops.col_tex_name:
+                    colornode = node
+                    ManualColNodeList.append(colornode)
+
+                # 获取Opacity节点和贴图
+                if node.image.name == wm.atbprops.opa_tex_name:
+                    opacitynode = node
+                    ManualColNodeList.append(opacitynode)
+                    
+                # 获取AO节点和贴图
+                if node.image.name == wm.atbprops.ao_tex_name:
+                    aonode = node
+                    ManualORMNodeList.append(aonode)
+
+                # 获取Roughness节点和贴图
+                if node.image.name == wm.atbprops.rough_tex_name:
+                    roughnessnode = node
+                    ManualORMNodeList.append(roughnessnode)
+
+                # 获取Metalness节点和贴图
+                if node.image.name == wm.atbprops.metal_tex_name:
+                    metalnessnode = node
+                    ManualORMNodeList.append(metalnessnode)
+
+                # 获取Normal节点和贴图
+                if node.image.name == wm.atbprops.nor_tex_name:
+                    normalnode = node
+                    ManualNrmNodeList.append(normalnode)
+
+        if ManualColNodeList:
+            ManualPILMergeCol(ManualColNodeList)
+            # NewTexPath = PILMergeORM(BID, ORMNodeList)
+            # OrganizeImages(BID, NrmNodeList, DisNodeList)
+            # OpenSysDir(NewTexPath)
+        else:
+            messagebox(message="Not Bridge Material", title="WARNING", icon='INFO')
+        return {'FINISHED'}
+
+#===========================================================================================================
+
 class ATBTestOperator(bpy.types.Operator):
     bl_idname = "object.atbtestoperator"
     bl_label = "ATBTestOperator"
@@ -196,6 +398,19 @@ classes = (
     ChangeProjectionOperator,
     Reload_Image_Operator,
     MergeBridgeTexOperator,
+    ManualMergeTexOperator,
+    MarkColTex,
+    DelColTex,
+    MarkOpaTex,
+    DelOpaTex,
+    MarkRoughTex,
+    DelRoughTex,
+    MarkMetalTex,
+    DelMetalTex,
+    MarkAOTex,
+    DelAOTex,
+    MarkNorTex,
+    DelNorTex,
     ATBTestOperator,
 )
 

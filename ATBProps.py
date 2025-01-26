@@ -94,6 +94,48 @@ class AtbPropgroup(PropertyGroup):
         default=True
     ) # type: ignore
     
+    col_tex_name: StringProperty(
+        name="Color Texture Name",
+        description="",
+        default="",
+        maxlen=1024,
+    )   # type: ignore
+    
+    opa_tex_name: StringProperty(
+        name="Opacity Texture Name",
+        description="",
+        default="",
+        maxlen=1024,
+    )   # type: ignore
+
+    rough_tex_name: StringProperty(
+        name="Roughness Texture Name",
+        description="",
+        default="",
+        maxlen=1024,
+    ) # type: ignore
+    
+    metal_tex_name: StringProperty(
+        name="Metallic Texture Name",
+        description="",
+        default="",
+        maxlen=1024,
+    ) # type: ignore
+    
+    ao_tex_name: StringProperty(
+        name="AO Texture Name",
+        description="",
+        default="",
+        maxlen=1024, 
+    ) # type: ignore
+    
+    nor_tex_name: StringProperty(
+        name="Normal Texture Name",
+        description="",
+        default="",
+        maxlen=1024, 
+    ) # type: ignore
+    
     #     maxlen=1024,
     #     subtype='FILE_PATH'
     #     )

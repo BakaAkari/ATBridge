@@ -1,10 +1,6 @@
-import typing
 import bpy
-from bpy.types import Context
 from bpy.utils import register_class, unregister_class
 from .ATBFunctions import *
-from mathutils import Matrix
-# from PIL import Image
 from .ATBOperator3D import *
 
 
@@ -148,12 +144,52 @@ class AtbPanelNode(bpy.types.Panel):
             pass
         
         try:
-            header, merge = layout.panel("merge_panel", default_closed=True)
-            header.label(text="ORM Texture Workflow")
-            if merge:
-                merge.label(text="Use ORM workflow to merge textures")
-                merge.label(text="The merged textures in the Blender file path")
-                merge.operator('object.mergebridgetex', text='Merge Bridge Texture')
+            header, orm = layout.panel("merge_panel", default_closed=True)
+            header.label(text="ORM Workflow")
+            if orm:
+                header, bridge_merge = orm.panel("brige_merge_panel", default_closed=True)
+                header.label(text="Quixel Bridge")
+                if bridge_merge:
+                    bridge_merge.operator('object.mergebridgetex')
+                    
+                # header, manual_merge = orm.panel("manual_merge_panel", default_closed=True)
+                # header.label(text="Manual Merge Texture")
+                
+                # if manual_merge:
+                #     manual_row = manual_merge.row(align=True)
+                #     op_box = manual_row.box()
+                #     op_box.scale_x = 1
+                    
+                #     op_box_col_r = op_box.row(align=True)
+                #     op_box_col_r.operator('object.markcoltex')
+                #     op_box_col_r.operator('object.delcoltex', icon='X')
+                #     op_box_opa_r = op_box.row(align=True)
+                #     op_box_opa_r.operator('object.markopatex')
+                #     op_box_opa_r.operator('object.delopatex', icon='X')
+                #     op_box_rough_r = op_box.row(align=True)
+                #     op_box_rough_r.operator('object.markroughtex')
+                #     op_box_rough_r.operator('object.delroughtex', icon='X')
+                #     op_box_metal_r = op_box.row(align=True)
+                #     op_box_metal_r.operator('object.markmetaltex')
+                #     op_box_metal_r.operator('object.delmetaltex', icon='X')
+                #     op_box_ao_r = op_box.row(align=True)
+                #     op_box_ao_r.operator('object.markaotex')
+                #     op_box_ao_r.operator('object.delaotex', icon='X')
+                #     op_box_nor_r = op_box.row(align=True)
+                #     op_box_nor_r.operator('object.marknortex')
+                #     op_box_nor_r.operator('object.delnortex', icon='X')
+                    
+                #     label_box = manual_row.box()
+                #     label_box.scale_x = 1.3
+                    
+                #     label_box.label(text=wm.atbprops.col_tex_name)
+                #     label_box.label(text=wm.atbprops.opa_tex_name)
+                #     label_box.label(text=wm.atbprops.rough_tex_name)
+                #     label_box.label(text=wm.atbprops.metal_tex_name)
+                #     label_box.label(text=wm.atbprops.ao_tex_name)
+                #     label_box.label(text=wm.atbprops.nor_tex_name)
+                #     #合并贴图
+                #     manual_merge.operator('object.manualmergetex')
         except:
             pass
         # layout.operator('object.atbtestoperator', text="测试按钮")

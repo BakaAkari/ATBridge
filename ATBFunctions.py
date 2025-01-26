@@ -2,8 +2,7 @@ import bpy
 import numpy as np
 import os
 import subprocess
-from PIL import Image
-
+import importlib
 
 def messagebox(message="", title="WARNING", icon='INFO'):
     def draw(self, context):
@@ -19,6 +18,7 @@ def translationui(self, context):
         buttonname = "Switch CH"
     else:
         buttonname = "切换英文"
+        
     layout.operator(operator="object.translation", text=buttonname)
     # layout.operator(operator="object.translationoperation")
 
@@ -78,52 +78,42 @@ def setframe(self, context):
 #     # Blue channel remains zero
 
 def convert_blender_image_to_pil(tex_node):
+    try:
+        from PIL import Image
+    except:
+        # 如果导入失败，打印错误信息并跳过导入
+        messagebox(message="PIL library not installed. Install it on the plugin settings page", title="WARNING", icon='INFO')
+        pass
+
     blender_image = tex_node.image
     width, height = blender_image.size
     pixels = np.array(blender_image.pixels).reshape(height, width, 4)
     pil_image = Image.fromarray((pixels * 255).astype(np.uint8))
     return pil_image
 
-def save_pil_image(blend_file_directory, BID, TexNode, pil_image):
+def OpenSysDir(NewORMTexPath):
+    print(NewORMTexPath)
+    if os.name == 'nt':  # Windows
+        subprocess.run(['explorer', os.path.dirname(NewORMTexPath)])
+    elif os.name == 'posix':  # Linux or macOS
+        subprocess.run(['xdg-open', os.path.dirname(NewORMTexPath)])
+#===========================================================================================================
+# Bridge流程
+#===========================================================================================================
+def BridgeSavePILImage(blend_file_directory, BID, TexNode, pil_image):
     NewTexPath = os.path.join(blend_file_directory, "Merge Tex", BID, TexNode.image.name)
     os.path.exists(os.path.dirname(NewTexPath)) or os.makedirs(os.path.dirname(NewTexPath))
     pil_image.save(NewTexPath) 
-
     pass
-
-def CreateSplitRGB(actmat):
-    # Create a new shader node tree
-    if actmat.use_nodes != True:
-        actmat.use_nodes = True
-        nodes = actmat.node_tree.nodes
-        links = actmat.node_tree.links
-    else:
-        nodes = actmat.node_tree.nodes
-        links = actmat.node_tree.links
-    print(nodes)
-
-    return actmat
-
-def CreateBakeFlow(actmat, ColNodeList, ORMNodeList, NrmNodeList, DisNodeList):
-    if ColNodeList:
-        for colnode in ColNodeList:
-            if "Opacity Tex Node" in colnode.name:
-                print("Opacity Tex Node")
-            else:  
-                continue
-        
-    # if ORMNodeList:
-    #     for ORMNode in ORMNodeList:
-    #         if "AO Tex Node" in ORMNode.name:
-    #             print("AO Tex Node")
-    #         elif "Roughness Tex Node" in ORMNode.name:
-    #             print("Roughness Tex Node")
-    #         elif "Metalness Tex Node" in ORMNode.name:
-    #             print("Metalness Tex Node")
-    #         else:
-    #             continue
     
-def PILMergeCol(BID, ColNodeList):
+def BridgePILMergeCol(BID, ColNodeList):
+    try:
+        from PIL import Image
+    except:
+        # 如果导入失败，打印错误信息并跳过导入
+        messagebox(message="PIL library not installed. Install it on the plugin settings page", title="WARNING", icon='INFO')
+        pass
+
     for colnode in ColNodeList:
         if colnode.name == "Color Tex Node":
             ColTex = Image.open(colnode.image.filepath)
@@ -146,11 +136,17 @@ def PILMergeCol(BID, ColNodeList):
     else:
         messagebox("Please save the file first", "Warning", "ERROR")
     
-def PILMergeORM(BID, ORMNodeList):
+def BridgePILMergeORM(BID, ORMNodeList):
     AOTex = None
     RoughnessTex = None
     MetalnessTex = None
-    
+    try:
+        from PIL import Image
+    except:
+        # 如果导入失败，打印错误信息并跳过导入
+        messagebox(message="PIL library not installed. Install it on the plugin settings page", title="WARNING", icon='INFO')
+        pass
+
     for ORMNode in ORMNodeList:
         if ORMNode.name == "AO Tex Node":
             AOTex = Image.open(ORMNode.image.filepath)
@@ -190,16 +186,67 @@ def OrganizeImages(BID, NrmNodeList, DisNodeList):
         for NrmNode in NrmNodeList:
             if NrmNode.name == "Normal Tex Node":
                 NrmTex = convert_blender_image_to_pil(NrmNode)
-                save_pil_image(blend_file_directory, BID, NrmNode, NrmTex)
+                BridgeSavePILImage(blend_file_directory, BID, NrmNode, NrmTex)
         
         # for DisNode in DisNodeList:
         #     if DisNode.name == "Displacement Tex Node":
         #         DisTex = convert_blender_image_to_pil(DisNode)
         #         save_pil_image(blend_file_directory, BID, DisNode, DisTex)
+#===========================================================================================================
+# 手动流程
+#===========================================================================================================
+def ManualPILMergeCol(ManualColNodeList):
+    wm = bpy.context.window_manager
+    blend_file_path = bpy.data.filepath
+    blend_file_directory = os.path.dirname(blend_file_path)
+    try:
+        from PIL import Image
+    except:
+        # 如果导入失败，打印错误信息并跳过导入
+        messagebox(message="PIL library not installed. Install it on the plugin settings page", title="WARNING", icon='INFO')
+        pass
+
+    if len(ManualColNodeList) > 1:
+        for colnode in ManualColNodeList:
+            if colnode.image.name == wm.atbprops.col_tex_name:
+                if os.path.isabs(colnode.image.filepath):
+                    ColTex = Image.open(blend_file_directory + os.path.abspath(colnode.image.filepath))
+                else:
+                    ColTex = Image.open(os.path.abspath(colnode.image.filepath))
+            elif colnode.name == wm.atbprops.opa_tex_name:
+                if os.path.isabs(colnode.image.filepath):
+                    OpaTex = Image.open(blend_file_directory + os.path.abspath(colnode.image.filepath))
+                    print(colnode)
+                else:
+                    OpaTex = Image.open(os.path.abspath(colnode.image.filepath))
+                    print(colnode)
+                    
+            # print(ColTex)
+            # print(OpaTex)
+        
+    # elif len(ManualColNodeList) == 1:
+    #     colnode = ManualColNodeList[0]
+    #     if os.path.isabs(colnode.image.filepath):
+    #         ColTex = Image.open(blend_file_directory + os.path.abspath(colnode.image.filepath))
+    #         OpaTex = Image.new('L', ColTex.size, 256)
+    #     else:
+    #         ColTex = Image.open(colnode.image.filepath)
+    #         OpaTex = Image.new('L', ColTex.size, 256)
+    #         print(OpaTex)
+        
+        return
             
-def OpenSysDir(NewORMTexPath):
-    print(NewORMTexPath)
-    if os.name == 'nt':  # Windows
-        subprocess.run(['explorer', os.path.dirname(NewORMTexPath)])
-    elif os.name == 'posix':  # Linux or macOS
-        subprocess.run(['xdg-open', os.path.dirname(NewORMTexPath)])
+    # if len(ColNodeList) > 1:
+    #     NewColTex = Image.merge("RGBA", (ColTex.split()[0], ColTex.split()[1], ColTex.split()[2], OpacityTex.split()[0]))
+    # else:
+    #     NewColTex = Image.merge("RGB", (ColTex.split()[0], ColTex.split()[1], ColTex.split()[2]))
+    
+    # blend_file_path = bpy.data.filepath
+    # if blend_file_path:
+    #     blend_file_directory = os.path.dirname(blend_file_path)
+    #     NewColTexPath = os.path.join(blend_file_directory, "Merge Tex", BID, TexName)
+    #     os.path.exists(os.path.dirname(NewColTexPath)) or os.makedirs(os.path.dirname(NewColTexPath))
+    #     NewColTex.save(NewColTexPath)
+    #     # print(NewColTexPath)
+    # else:
+    #     messagebox("Please save the file first", "Warning", "ERROR")

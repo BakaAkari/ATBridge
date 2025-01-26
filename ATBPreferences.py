@@ -1,11 +1,6 @@
 import bpy
-from bpy.props import (BoolProperty, CollectionProperty, EnumProperty,
-                       FloatProperty, IntProperty, PointerProperty,
-                       StringProperty)
 from bpy.types import AddonPreferences, PropertyGroup
 from bpy.utils import register_class, unregister_class
-import subprocess
-import sys
 import pip
 
 
