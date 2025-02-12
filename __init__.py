@@ -1,18 +1,16 @@
 import bpy
 from bpy.app.handlers import persistent
-from bpy.props import PointerProperty
 
-from . import ATBOperator3D, ATBPreferences, ATBProps, ATBFunctions, ATBPanel, ATBOperatorNode, ATBridge
-from .ATBProps import AtbPropgroup
+from . import ATBridge
 
 bl_info = {
     "name": "ATBridge",
-    "description": "Akari Toolkit integrates the optimized Quixel Bridge plugin suite.",
-    "author": "Akari",
-    "version": (0, 1, 7),
+    "description": "Baka_Akari Toolkit",
+    "author": "Baka_Akari",
+    "version": (0, 1, 8),
     "blender": (4, 3, 0),
     "location": "View3D",
-    "warning": "Multiple functions are in beta",  # used for warning icon and text in addons panel
+    # "warning": "Multiple functions are in beta",  # used for warning icon and text in addons panel
     "wiki_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart.html",
     "support": "COMMUNITY",
     "category": "3D View"
@@ -31,11 +29,6 @@ def menu_func_import(self, context):
 
 
 def register():
-    ATBPreferences.register()
-    ATBOperator3D.register()
-    ATBOperatorNode.register()
-    ATBProps.register()
-    ATBPanel.register()
     ATBridge.register()
     
     bpy.app.handlers.load_post.append(load_plugin)
@@ -43,9 +36,4 @@ def register():
 
 
 def unregister():
-    ATBPreferences.unregister()
-    ATBOperator3D.unregister()
-    ATBOperatorNode.unregister()
-    ATBProps.unregister()
-    ATBPanel.unregister()
     ATBridge.unregister()
