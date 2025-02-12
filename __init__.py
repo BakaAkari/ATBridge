@@ -9,7 +9,7 @@ bl_info = {
     "name": "ATBridge",
     "description": "Akari Toolkit integrates the optimized Quixel Bridge plugin suite.",
     "author": "Akari",
-    "version": (0, 1, 6),
+    "version": (0, 1, 7),
     "blender": (4, 3, 0),
     "location": "View3D",
     "warning": "Multiple functions are in beta",  # used for warning icon and text in addons panel
@@ -37,12 +37,7 @@ def register():
     ATBProps.register()
     ATBPanel.register()
     ATBridge.register()
-
-    bpy.types.WindowManager.atbprops = PointerProperty(type=AtbPropgroup)
-    bpy.types.WindowManager.quick_physics = PointerProperty(type=AtbPropgroup)
-    bpy.types.STATUSBAR_HT_header.append(ATBFunctions.translationui)
-    bpy.types.DOPESHEET_HT_header.append(ATBFunctions.setframe)
-
+    
     bpy.app.handlers.load_post.append(load_plugin)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
@@ -54,9 +49,3 @@ def unregister():
     ATBProps.unregister()
     ATBPanel.unregister()
     ATBridge.unregister()
-
-    del bpy.types.WindowManager.atbprops
-    del bpy.types.WindowManager.quick_physics
-    bpy.types.STATUSBAR_HT_header.remove(ATBFunctions.translationui)
-    bpy.types.DOPESHEET_HT_header.remove(ATBFunctions.setframe)
-
