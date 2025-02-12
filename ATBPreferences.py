@@ -1,8 +1,6 @@
 import bpy
 from bpy.types import AddonPreferences, PropertyGroup
 from bpy.utils import register_class, unregister_class
-import pip
-
 
 class ATB_AddonPreferences(AddonPreferences):
     bl_idname = __package__
@@ -16,82 +14,8 @@ class ATB_AddonPreferences(AddonPreferences):
         col = layout.column(align=True)
         box = col.box()
         col = box.column(align=True)
-        # col.prop(props, 'addonaddress', text="Plugins Location")
-        # col.operator('object.atbimportaddons', text='Update Plugins')
         col.operator('object.atbinstallpil', text='Install PIL')
         col.operator(ATB_DefaultSetting.bl_idname, text="Optimize Blender settings")
-
-class ATB_InstallPIL(bpy.types.Operator):
-    bl_idname = "object.atbinstallpil"
-    bl_label = "安装PIL库"
-    
-    _message = ""  # 保存当前要显示的消息内容
-
-    @classmethod
-    def poll(cls, context):
-        return True
-    
-    def execute(self, context):
-        try:
-            pip.main(['install', 'pillow'])
-            import PIL
-            self.report({'INFO'}, "Pillow 已成功安装")
-        except Exception as e:
-            self.report({'ERROR'}, f"Pillow 安装失败：{e}")
-        return {'FINISHED'}
-
-# class ATB_ImportAddons(bpy.types.Operator):
-#     bl_idname = "object.atbimportaddons"
-#     bl_label = "更新插件库"
-
-#     def execute(self, context):
-#         keys = []
-#         newaddonfilepath = context.scene.atbprops.addonaddress
-#         customaddonlist = [
-#                             'HOps', 
-#                             'MACHIN3tools', 
-#                             'MESHmachine',
-#                             'batch_ops', 
-#                             'Boxcutter', 
-#                             'Fix_Quixel_Bridge_Addon', 
-#                             'GoB', 
-#                             'Node Kit',
-#                             'smart_fill',
-#                             'sculpt_paint_wheel',
-#                             'better_fbx',
-#                             'VertexGame_Tools',
-#                             'Gaffer',
-#         ]
-#         defaultaddonlist = [
-#                             'space_view3d_modifier_tools',
-#                             'space_view3d_spacebar_menu',
-#                             'object_collection_manager',
-#                             'mesh_f2',
-#                             'mesh_tools',
-#                             'mesh_looptools',
-#                             'node_wrangler',
-#         ]
-
-#         blenderaddonpath = __file__.split('\\')
-#         addonpath = '\\'.join(blenderaddonpath[:-2])
-#         for root,dirs,files in os.walk(newaddonfilepath):
-#             for f in files:
-#                 # print(f)
-#                 if f == "VertexGame_Tools.zip":
-#                     with zipfile.ZipFile(onlineaddonpath) as zf:
-#                         zf.extractall(addonpath)
-#                 else:
-#                     onlineaddonpath = os.path.join(root,f)
-#                     bpy.ops.preferences.addon_install(overwrite=True, filepath=onlineaddonpath)
-#         bpy.ops.script.reload()
-#         alladdonlist = customaddonlist + defaultaddonlist
-#         for enab in alladdonlist:
-#             try:
-#                 bpy.ops.preferences.addon_enable(module=enab)
-#             except:
-#                 print(enab)
-
-#         return{'FINISHED'}
 
 class ATB_DefaultSetting(bpy.types.Operator):
     bl_idname = "object.vgtdefaultsetting"
@@ -145,17 +69,6 @@ class ATB_DefaultSetting(bpy.types.Operator):
             addonpre.activate_tools_pie = True
         else:
             print("MACHIN3tools missing")
-
-        #=====================================================================================
-        #复制指定目录里的配置文件至配置文件夹内
-        #已废弃
-        # newaddonfilepath = context.scene.addonprops.vgtautoipdatepath
-        # blenderaddonpath = __file__.split('\\')
-        # # print(newaddonfilepath)
-        # sourceF = '\\'.join(blenderaddonpath[:-1])+'\\config'
-        # targetF = '\\'.join(blenderaddonpath[:-4])+'\\config'
-        # shutil.copytree(sourceF,targetF)
-
         #=====================================================================================
         # 设置cycles渲染设备
         cyclespref = bpy.context.preferences.addons['cycles'].preferences
@@ -190,50 +103,6 @@ class ATB_DefaultSetting(bpy.types.Operator):
         bpy.ops.preferences.associate_blend()
         bpy.ops.wm.save_userpref()
 
-        #=====================================================================================
-        # 设置快捷键
-        # winmankeys = bpy.data.window_managers["WinMan"].keyconfigs
-        # wm = bpy.context.window_manager
-        # kc = wm.keyconfigs.addon
-        # for key in winmankeys:
-        #     if key.name == "Blender addon":
-        #         for keymap in key.keymaps:
-        #             if keymap.name == "3D View":
-        #                 for keyitem in keymap.keymap_items:
-        #                     if keyitem.idname == "wm.call_menu_pie":
-        #                         # def register():
-        #                         # km = kc.keymaps.new(name="3D View")
-        #                         # kc.keymaps["3D View"].keymap_items.new("wm.call_menu_pie", type = "Q", value = "PRESS", ctrl = True, shift = True)
-
-        #                         # bpy.data.window_managers["WinMan"].keyconfigs["Blender addon"].keymaps["3D View"].keymap_items["wm.call_menu_pie"].ctrl = True
-        #                         # keyitem.key_modifier = "Q"
-        #                         register_keymap("wm.call_menu_pie","Q",True,True,"PRESS")
-        #                         # print(keyitem.ctrl_ui)
-        #                         # keyitem.is_user_modified = True
-        #                     # if keyitem.idname == "wm.call_menu":
-        #                     #     # km = kc.keymaps.new(name="3D View")
-        #                     #     kc.keymaps["3D View"].keymap_items.new("wm.call_menu", type = "Q", value = "PRESS", ctrl = False, shift = True)
-
-        #                         # keyitem.shift_ui = True
-        #             # if keymap.name == "Object Non-modal":
-        #             #     for keyitem in keymap.keymap_items:
-        #             #         if keyitem.idname == "wm.call_menu_pie":
-        #             #             # km = kc.keymaps.new(name="3D View")
-        #             #             kc.keymaps["3D View"].keymap_items.new("wm.call_menu_pie", type = "Q")
-
-        #                         # keyitem.type = "Q"
-        #             # if keymap.name == "Image":
-        #             #     for keyitem in keymap.keymap_items:
-        #             #         if keyitem.idname == "wm.call_menu_pie":
-        #             #             # km = kc.keymaps.new(name="3D View")
-        #             #             kc.keymaps["3D View"].keymap_items.new("wm.call_menu_pie", type = "Q")
-
-        #                         # keyitem.type = "Q"
-        # # MACHIN3toolsPreferences.activate_smart_vert()
-
-        # # def update_activate_shading_pie(self, context):
-        # #     activate(self, register=self.activate_shading_pie, tool="shading_pie")
-
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -243,7 +112,7 @@ class ATB_DefaultSetting(bpy.types.Operator):
 #=====================================================================================
 
 
-classes = (ATB_InstallPIL, ATB_AddonPreferences, ATB_DefaultSetting)
+classes = (ATB_AddonPreferences, ATB_DefaultSetting)
 
 
 def register():

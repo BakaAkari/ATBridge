@@ -1,7 +1,5 @@
-import typing
 import os
 import bpy
-from bpy.types import Context
 from bpy.utils import register_class, unregister_class
 from .ATBFunctions import *
 from mathutils import Matrix
@@ -206,9 +204,22 @@ class ExportFBX(bpy.types.Operator):
             if not os.path.exists(output_dir_path):
                 os.makedirs(output_dir_path)
 
-            # 选择当前对象
+            # # 选择当前对象
+            # bpy.ops.object.select_all(action='DESELECT')  # 取消选择所有对象
+            # obj.select_set(True)  # 选择当前对象
+
+            # 检查对象是否包含关联子项，并将符合条件的子项加入导出列表
+            objects_to_export = [obj]  # 主对象
+            if obj.children:  # 检查是否有子项
+                for child in obj.children:
+                    # 判断子项是否为关联子项且类型为 "MESH"
+                    if child.parent == obj and child.type == 'MESH':
+                        objects_to_export.append(child)
+
+            # 选择所有需要导出的对象
             bpy.ops.object.select_all(action='DESELECT')  # 取消选择所有对象
-            obj.select_set(True)  # 选择当前对象
+            for obj_to_export in objects_to_export:
+                obj_to_export.select_set(True)  # 选择当前对象或子项
 
             # 导出当前对象为FBX文件
             if props.export_rule == 'UNREAL':
