@@ -8,7 +8,7 @@ bl_info = {
     "description": "Baka_Akari Toolkit",
     "author": "Baka_Akari",
     "version": (0, 1, 8),
-    "blender": (4, 3, 0),
+    "blender": (2, 8, 0),
     "location": "View3D",
     # "warning": "Multiple functions are in beta",  # used for warning icon and text in addons panel
     "wiki_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart.html",

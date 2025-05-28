@@ -4,15 +4,23 @@ import socket
 import threading
 import time
 import bpy
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 from bpy.utils import register_class, unregister_class
 
-globals()['Megascans_DataSet'] = None
+@dataclass
+class BridgeData:
+    megascans_dataset: Optional[str] = None
+    mg_material: List = field(default_factory=list)
+    mg_alembic_path: List = field(default_factory=list)
+    mg_import_complete: bool = False
 
-# This stuff is for the Alembic support
-globals()['MG_Material'] = []
-globals()['MG_AlembicPath'] = []
-globals()['MG_ImportComplete'] = False
+class BridgeConfig:
+    HOST = 'localhost'
+    PORT = 23333
+    BUFFER_SIZE = 8192  # 4096 * 2
+    RECONNECT_DELAY = 3
 
 class MS_Init_ImportProcess():
 
