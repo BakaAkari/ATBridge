@@ -521,7 +521,12 @@ class MS_Init_ImportProcess():
     def GetTexturePath(self, textureType):
         for item in self.textureList:
             if item[1] == textureType:
-                return item[2].replace("\\", "/")
+                path = item[2]
+                # 如果是网络路径（UNC），直接返回原始路径
+                if path.startswith("\\\\"):
+                    return path
+                # 否则替换为正斜杠
+                return path.replace("\\", "/")
 
     def GetTextureFormat(self, textureType):
         for item in self.textureList:
