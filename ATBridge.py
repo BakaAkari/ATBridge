@@ -9,6 +9,99 @@ from typing import List, Optional
 
 from bpy.utils import register_class, unregister_class
 
+# 数据管理器类，替代全局变量
+class BridgeState:
+    _lock = threading.Lock()
+    _MG_AlembicPath = []
+    _MG_Material = []
+    _MG_ImportComplete = False
+    _Megascans_DataSet = None
+    # 移除 _last_bridge_connect 及相关方法
+
+    @classmethod
+    def get_MG_AlembicPath(cls):
+        with cls._lock:
+            return cls._MG_AlembicPath
+
+    @classmethod
+    def set_MG_AlembicPath(cls, value):
+        with cls._lock:
+            cls._MG_AlembicPath = value
+
+    @classmethod
+    def get_MG_Material(cls):
+        with cls._lock:
+            return cls._MG_Material
+
+    @classmethod
+    def set_MG_Material(cls, value):
+        with cls._lock:
+            cls._MG_Material = value
+
+    @classmethod
+    def get_MG_ImportComplete(cls):
+        with cls._lock:
+            return cls._MG_ImportComplete
+
+    @classmethod
+    def set_MG_ImportComplete(cls, value):
+        with cls._lock:
+            cls._MG_ImportComplete = value
+
+    @classmethod
+    def get_Megascans_DataSet(cls):
+        with cls._lock:
+            return cls._Megascans_DataSet
+
+    @classmethod
+    def set_Megascans_DataSet(cls, value):
+        with cls._lock:
+            cls._Megascans_DataSet = value
+
+    @classmethod
+    def reset(cls):
+        with cls._lock:
+            cls._MG_AlembicPath = []
+            cls._MG_Material = []
+            cls._MG_ImportComplete = False
+            cls._Megascans_DataSet = None
+
+    @staticmethod
+    def check_port_available(host='localhost', port=23333, timeout=2):
+        """
+        检查端口是否可用（未被占用/堵塞）。
+        返回 True 表示端口可用，False 表示端口被占用或不可用。
+        """
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        try:
+            s.bind((host, port))
+            s.close()
+            return True
+        except OSError:
+            return False
+
+    @staticmethod
+    def check_quixel_bridge_connectivity(host='localhost', port=23333, timeout=2):
+        """
+        使用握手协议检测与 Quixel Bridge 的通信连通性。
+        尝试连接端口，发送 b'ping'，若收到响应则认为连通。
+        返回 True 表示连通，False 表示不通。
+        """
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(timeout)
+            s.connect((host, port))
+            s.sendall(b'ping')
+            resp = s.recv(1024)
+            s.close()
+            if resp:
+                return True
+            else:
+                return False
+        except Exception:
+            return False
+
 @dataclass
 class BridgeData:
     megascans_dataset: Optional[str] = None
@@ -28,41 +121,43 @@ class MS_Init_ImportProcess():
     # later on in the initImportProcess method. The method loops on all assets
     # that have been sent by Bridge.
     def __init__(self):
-        print("Initialized import class...")
+        print("[ATBridge] Initialized import class...")
         try:
             self.TexCount = 0
             # Check if there's any incoming data
-            if globals()['Megascans_DataSet'] != None:
+            if BridgeState.get_Megascans_DataSet() != None:
 
-                globals()['MG_AlembicPath'] = []
-                globals()['MG_Material'] = []
-                globals()['MG_ImportComplete'] = False
+                BridgeState.set_MG_AlembicPath([])
+                BridgeState.set_MG_Material([])
+                BridgeState.set_MG_ImportComplete(False)
 
-                self.json_Array = json.loads(globals()['Megascans_DataSet'])
+                self.json_Array = json.loads(BridgeState.get_Megascans_DataSet())
+                print(f"[ATBridge] 解析到资产数量: {len(self.json_Array)}")
 
                 # Start looping over each asset in the self.json_Array list
                 for js in self.json_Array:
 
                     self.json_data = js
+                    print(f"[ATBridge] 当前资产: {json.dumps(js, ensure_ascii=False)[:500]} ...")
 
                     self.selectedObjects = []
 
                     self.IOR = 1.45
                     self.assetType = self.json_data["type"]
-                    self.assetPath = self.json_data["path"]
+                    self.assetPath = self.json_data["path"] if "path" in self.json_data else None
                     self.assetID = self.json_data["id"]
-                    self.isMetal = bool(self.json_data["category"] == "Metal")
+                    self.isMetal = bool(self.json_data.get("category", "") == "Metal")
                     # Workflow setup.
-                    self.isHighPoly = bool(self.json_data["activeLOD"] == "high")
-                    self.activeLOD = self.json_data["activeLOD"]
-                    self.minLOD = self.json_data["minLOD"]
+                    self.isHighPoly = bool(self.json_data.get("activeLOD", "") == "high")
+                    self.activeLOD = self.json_data.get("activeLOD", None)
+                    self.minLOD = self.json_data.get("minLOD", None)
                     self.RenderEngine = bpy.context.scene.render.engine.lower()  # Get the current render engine. i.e. blender_eevee or cycles
                     self.Workflow = self.json_data.get('pbrWorkflow', 'specular')
                     self.DisplacementSetup = 'adaptive'  #regular
                     self.isCycles = bool(self.RenderEngine == 'cycles')
-                    self.isScatterAsset = self.CheckScatterAsset()
+                    self.isScatterAsset = self.CheckScatterAsset() if hasattr(self, 'CheckScatterAsset') else False
                     self.textureList = []
-                    self.isBillboard = self.CheckIsBillboard()
+                    self.isBillboard = self.CheckIsBillboard() if hasattr(self, 'CheckIsBillboard') else False
                     self.ApplyToSelection = False
                     self.isSpecularWorkflow = False
                     self.isAlembic = False
@@ -85,21 +180,18 @@ class MS_Init_ImportProcess():
                         texturesListName = "components"
 
                     # Get a list of all available texture maps. item[1] returns the map type (albedo, normal, etc...).
-                    self.textureTypes = [obj["type"] for obj in self.json_data[texturesListName]]
+                    self.textureTypes = [obj.get("type", "unknown") for obj in self.json_data.get(texturesListName, [])]
                     self.textureList = []
 
-                    for obj in self.json_data[texturesListName]:
-                        texFormat = obj["format"]
-                        texType = obj["type"]
-                        texPath = obj["path"]
-
-                        if texType == "displacement" and texFormat != "exr":
-                            texDir = os.path.dirname(texPath)
-                            texName = os.path.splitext(os.path.basename(texPath))[0]
-
-                            if os.path.exists(os.path.join(texDir, texName + ".exr")):
-                                texPath = os.path.join(texDir, texName + ".exr")
-                                texFormat = "exr"
+                    for idx, obj in enumerate(self.json_data.get(texturesListName, [])):
+                        print(f"[ATBridge] 贴图对象[{idx}]: {obj}")
+                        try:
+                            texFormat = obj["format"]
+                            texType = obj["type"]
+                            texPath = obj["path"]
+                        except Exception as e:
+                            print(f"[ATBridge] 贴图对象缺少关键字段: {e}, 对象内容: {obj}")
+                            raise
                         # Replace diffuse texture type with albedo so we don't have to add more conditions to handle diffuse map.
                         if texType == "diffuse" and "albedo" not in self.textureTypes:
                             texType = "albedo"
@@ -116,7 +208,16 @@ class MS_Init_ImportProcess():
 
                     # Create a tuple list of all the 3d meshes  available.
                     # This tuple is composed of (meshFormat, meshPath)
-                    self.geometryList = [(obj["format"], obj["path"]) for obj in self.json_data["meshList"]]
+                    self.geometryList = []
+                    for idx, obj in enumerate(self.json_data.get("meshList", [])):
+                        print(f"[ATBridge] 模型对象[{idx}]: {obj}")
+                        try:
+                            meshFormat = obj["format"]
+                            meshPath = obj["path"]
+                        except Exception as e:
+                            print(f"[ATBridge] 模型对象缺少关键字段: {e}, 对象内容: {obj}")
+                            raise
+                        self.geometryList.append((meshFormat, meshPath))
 
                     # Create name of our asset. Multiple conditions are set here
                     # in order to make sure the asset actually has a name and that the name
@@ -135,12 +236,12 @@ class MS_Init_ImportProcess():
                     self.initImportProcess()
                     print("Imported asset from " + self.assetName + " Quixel Bridge")
 
-            if len(globals()['MG_AlembicPath']) > 0:
-                globals()['MG_ImportComplete'] = True
+            if len(BridgeState.get_MG_AlembicPath()) > 0:
+                BridgeState.set_MG_ImportComplete(True)
         except Exception as e:
             print("Megascans Plugin Error initializing the import process. Error: ", str(e))
 
-        globals()['Megascans_DataSet'] = None
+        BridgeState.set_Megascans_DataSet(None)
 
     # this method is used to import the geometry and create the material setup.
     def initImportProcess(self):
@@ -162,7 +263,7 @@ class MS_Init_ImportProcess():
                 self.GiveObjectsMaterial()
 
                 if self.isAlembic:
-                    globals()['MG_Material'].append(self.mat)
+                    BridgeState.get_MG_Material().append(self.mat)
 
         except Exception as e:
             print("Megascans Plugin Error while importing textures/geometry or setting up material. Error: ", str(e))
@@ -199,7 +300,7 @@ class MS_Init_ImportProcess():
                         abcPaths.append(meshPath)
 
             if self.isAlembic:
-                globals()['MG_AlembicPath'].append(abcPaths)
+                BridgeState.get_MG_AlembicPath().append(abcPaths)
         except Exception as e:
             print("Megascans Plugin Error while importing textures/geometry or setting up material. Error: ", str(e))
 
@@ -548,82 +649,49 @@ class MS_Init_ImportProcess():
 
 #========================================================================================================================
 
-class ms_Init(threading.Thread):
+class QuixelSocketServer(threading.Thread):
+    def __init__(self, host='localhost', port=23333, importer=None):
+        super().__init__()
+        self.host = host
+        self.port = port
+        self.importer = importer  # 资产导入处理函数
+        self.daemon = True
+        self.running = True
+        self.server = None
 
-    #Initialize the thread and assign the method (i.e. importer) to be called when it receives JSON data.
-    def __init__(self, importer):
-        threading.Thread.__init__(self)
-        self.importer = importer
-
-    #Start the thread to start listing to the port.
     def run(self):
         try:
-            run_livelink = True
-            host, port = 'localhost', 23333
-            #Making a socket object.
-            socket_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #Binding the socket to host and port number mentioned at the start.
-            socket_.bind((host, port))
-
-            #Run until the thread starts receiving data.
-            while run_livelink:
-                socket_.listen(5)
-                #Accept connection request.
-                client, addr = socket_.accept()
-                data = ""
-                buffer_size = 4096 * 2
-                #Receive data from the client.
-                data = client.recv(buffer_size)
-                if data == b'Bye Megascans':
-                    run_livelink = False
-                    break
-
-                #If any data is received over the port.
-                if data != "":
-                    self.TotalData = b""
-                    self.TotalData += data  #Append the previously received data to the Total Data.
-                    #Keep running until the connection is open and we are receiving data.
-                    while run_livelink:
-                        #Keep receiving data from client.
-                        data = client.recv(4096 * 2)
-                        if data == b'Bye Megascans':
-                            run_livelink = False
-                            break
-                        #if we are getting data keep appending it to the Total data.
-                        if data:
-                            self.TotalData += data
-                        else:
-                            #Once the data transmission is over call the importer method and send the collected TotalData.
-                            self.importer(self.TotalData)
-                            break
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+                self.server = server
+                server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                server.bind((self.host, self.port))
+                server.listen(5)
+                while self.running:
+                    try:
+                        client, addr = server.accept()
+                        with client:
+                            data = b''
+                            while True:
+                                chunk = client.recv(8192)
+                                if not chunk:
+                                    break
+                                data += chunk
+                            if data and self.importer:
+                                # 移除 BridgeState.update_last_bridge_connect()
+                                self.importer(data)
+                    except Exception as e:
+                        print(f'QuixelSocketServer error: {e}')
         except Exception as e:
-            print("Megascans Plugin Error initializing the thread. Error: ", str(e))
+            print(f'QuixelSocketServer main error: {e}')
 
-
-class thread_checker(threading.Thread):
-
-    #Initialize the thread and assign the method (i.e. importer) to be called when it receives JSON data.
-    def __init__(self):
-        threading.Thread.__init__(self)
-
-    #Start the thread to start listing to the port.
-    def run(self):
+    def stop(self):
+        self.running = False
+        # 触发一次连接以退出阻塞的accept
         try:
-            run_checker = True
-            while run_checker:
-                time.sleep(3)
-                for i in threading.enumerate():
-                    if (i.getName() == "MainThread" and i.is_alive() == False):
-                        host, port = 'localhost', 23333
-                        s = socket.socket()
-                        s.connect((host, port))
-                        data = "Bye Megascans"
-                        s.send(data.encode())
-                        s.close()
-                        run_checker = False
-                        break
-        except Exception as e:
-            print("Megascans Plugin Error initializing thread checker. Error: ", str(e))
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((self.host, self.port))
+                s.close()
+        except Exception:
             pass
 
 
@@ -633,11 +701,10 @@ class MS_Init_LiveLink(bpy.types.Operator):
     socketCount = 0
 
     def execute(self, context):
-
         try:
-            globals()['Megascans_DataSet'] = None
-            self.thread_ = threading.Thread(target=self.socketMonitor)
-            self.thread_.start()
+            BridgeState.set_Megascans_DataSet(None)
+            self.server_thread = QuixelSocketServer(importer=self.importer)
+            self.server_thread.start()
             bpy.app.timers.register(self.newDataMonitor)
             return {'FINISHED'}
         except Exception as e:
@@ -646,34 +713,24 @@ class MS_Init_LiveLink(bpy.types.Operator):
 
     def newDataMonitor(self):
         try:
-            if globals()['Megascans_DataSet'] != None:
+            if BridgeState.get_Megascans_DataSet() != None:
                 MS_Init_ImportProcess()
-                globals()['Megascans_DataSet'] = None
+                BridgeState.set_Megascans_DataSet(None)
         except Exception as e:
             print("Megascans Plugin Error starting blender plugin (newDataMonitor). Error: ", str(e))
             return {"FAILED"}
         return 1.0
 
-    def socketMonitor(self):
-        try:
-            #Making a thread object
-            threadedServer = ms_Init(self.importer)
-            #Start the newly created thread.
-            threadedServer.start()
-            #Making a thread object
-            thread_checker_ = thread_checker()
-            #Start the newly created thread.
-            thread_checker_.start()
-        except Exception as e:
-            print("Megascans Plugin Error starting blender plugin (socketMonitor). Error: ", str(e))
-            return {"FAILED"}
-
     def importer(self, recv_data):
         try:
-            globals()['Megascans_DataSet'] = recv_data
+            BridgeState.set_Megascans_DataSet(recv_data)
         except Exception as e:
             print("Megascans Plugin Error starting blender plugin (importer). Error: ", str(e))
             return {"FAILED"}
+
+    def __del__(self):
+        if hasattr(self, 'server_thread') and self.server_thread:
+            self.server_thread.stop()
 
 
 class MS_Init_Abc(bpy.types.Operator):
@@ -683,10 +740,10 @@ class MS_Init_Abc(bpy.types.Operator):
     def execute(self, context):
 
         try:
-            if globals()['MG_ImportComplete']:
+            if BridgeState.get_MG_ImportComplete():
 
-                assetMeshPaths = globals()['MG_AlembicPath']
-                assetMaterials = globals()['MG_Material']
+                assetMeshPaths = BridgeState.get_MG_AlembicPath()
+                assetMaterials = BridgeState.get_MG_Material()
 
                 if len(assetMeshPaths) > 0 and len(assetMaterials) > 0:
 
@@ -709,9 +766,9 @@ class MS_Init_Abc(bpy.types.Operator):
                         except:
                             pass
 
-                    globals()['MG_AlembicPath'] = []
-                    globals()['MG_Material'] = []
-                    globals()['MG_ImportComplete'] = False
+                    BridgeState.set_MG_AlembicPath([])
+                    BridgeState.set_MG_Material([])
+                    BridgeState.set_MG_ImportComplete(False)
 
             return {'FINISHED'}
         except Exception as e:
