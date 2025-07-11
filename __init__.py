@@ -8,7 +8,7 @@ bl_info = {
     "name": "ATBridge",
     "description": "Baka_Akari Toolkit",
     "author": "Baka_Akari",
-    "version": (0, 2, 0),
+    "version": (0, 2, 1),
     "blender": (2, 8, 0),
     "location": "View3D",
     "wiki_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart.html",

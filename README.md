@@ -6,7 +6,69 @@ ATBridge是集成了ATB功能的Quixel Bridge桥接插件, 内置了一些常用
 #### [English]
 ATBridge is a plugin for Quixel Bridge that integrates a set of convenient tools for personal use.
 
+## Features
+#### [中文]
+- Quixel Bridge资产导入
+- Fab ZIP文件导入功能
+- 一键翻译中英文功能
+- 一键模型清理功能
+- 物理模拟工具
+- 集合重命名功能
+
+#### [English]
+- Quixel Bridge asset import
+- Fab ZIP file import functionality
+- One-click Chinese/English translation
+- One-click model cleanup
+- Physics simulation tools
+- Collection renaming functionality
+
+## Fab ZIP File Import Configuration
+#### [中文]
+**首次使用前必须配置解压路径：**
+1. 打开 Blender 首选项：`编辑` > `首选项` > `插件`
+2. 搜索并找到 "ATBridge" 插件
+3. 展开插件设置，在 "Fab Assets Configuration" 部分设置 "Extract Path"
+4. 选择一个用于解压Fab ZIP文件的文件夹路径
+5. 设置完成后，3D视图区域顶部将显示 "Import Fab Asset" 按钮
+
+**使用方法：**
+1. 确保已配置解压路径
+2. 点击3D视图顶部的 "Import Fab Asset" 按钮
+3. 选择要导入的Fab ZIP文件
+4. 插件会自动解压并导入资产到Blender
+
+#### [English]
+**Extraction path must be configured before first use:**
+1. Open Blender Preferences: `Edit` > `Preferences` > `Add-ons`
+2. Search for and find the "ATBridge" addon
+3. Expand addon settings, set "Extract Path" in the "Fab Assets Configuration" section
+4. Choose a folder path for extracting Fab ZIP files
+5. After configuration, "Import Fab Asset" button will appear in the 3D viewport header
+
+**Usage:**
+1. Ensure extraction path is configured
+2. Click the "Import Fab Asset" button in the 3D viewport header
+3. Select the Fab ZIP file to import
+4. The plugin will automatically extract and import assets into Blender
+
 ## Change Log
+### Version 0.2.0 (Latest)
+
+#### [中文]
+- 🔧 修复首选项中fab zip文件解压路径设置功能
+- ✨ 改进首选项界面，增加更详细的配置说明
+- ✨ 添加智能UI切换：未配置路径时显示设置按钮，已配置时显示导入按钮
+- 🔧 优化首选项获取逻辑，提高兼容性
+- ✨ 增加首选项快捷访问功能
+
+#### [English]
+- 🔧 Fixed fab zip file extraction path setting in preferences
+- ✨ Improved preferences interface with detailed configuration instructions
+- ✨ Added smart UI switching: shows setup button when unconfigured, import button when configured
+- 🔧 Optimized preferences retrieval logic for better compatibility
+- ✨ Added quick access to preferences functionality
+
 ### Version 4.0.1
 
 #### [中文]

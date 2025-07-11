@@ -6,18 +6,24 @@ from bpy.types import AddonPreferences
 
 # 插件首选项
 class AT_AddonPreferences(AddonPreferences):
-    bl_idname = "ATBridge"
+    # 确保bl_idname与插件的实际模块名一致
+    bl_idname = __name__.partition('.')[0] if '.' in __name__ else "ATBridge"
 
     fab_assets_path: bpy.props.StringProperty(
         name="Fab Assets Path",
-        description="Specify the path to the Fab Assets",
+        description="Specify the path to extract Fab ZIP assets",
         subtype='DIR_PATH',
         default="D:/FabAssets"
     ) # type: ignore
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(self, "fab_assets_path")
+        layout.label(text="ATBridge Settings:")
+        
+        # 简化的界面
+        box = layout.box()
+        box.label(text="Fab Assets Configuration:", icon='PACKAGE')
+        box.prop(self, "fab_assets_path", text="Extract Path")
 
 # ZIP导入操作符
 class ATB_OT_import_zip(bpy.types.Operator):
@@ -52,13 +58,13 @@ class ATB_OT_import_zip(bpy.types.Operator):
                     if asset_id not in zip_filename:
                         self.report({'ERROR'}, f"id '{asset_id}' not found in the ZIP file name!")
                         return {'CANCELLED'}
-                    fab_assets_path = None
-                    prefs = context.preferences.addons.get("ATBridge")
-                    if prefs is not None:
-                        fab_assets_path = prefs.preferences.fab_assets_path
-                    if not fab_assets_path:
-                        self.report({'ERROR'}, "Fab Assets Path not found, cannot unzip!")
+                    
+                    # 获取首选项中的路径
+                    fab_assets_path = self.get_fab_assets_path(context)
+                    if not fab_assets_path or not os.path.isdir(fab_assets_path):
+                        self.report({'ERROR'}, "Please set a valid Fab Assets Path in addon preferences (Edit > Preferences > Add-ons > ATBridge)")
                         return {'CANCELLED'}
+                        
                     target_dir = os.path.join(fab_assets_path, os.path.splitext(zip_filename)[0])
                     os.makedirs(target_dir, exist_ok=True)
                     zip_ref.extractall(target_dir)
@@ -158,25 +164,37 @@ class ATB_OT_import_zip(bpy.types.Operator):
                         from .ATBridge import BridgeState, MS_Init_ImportProcess
                         BridgeState.set_Megascans_DataSet(json_str)
                         MS_Init_ImportProcess()
+                        
+                        self.report({'INFO'}, f"Successfully imported Fab asset: {asset.get('name', 'Unknown')}")
+                        
                     except Exception as e:
                         self.report({'ERROR'}, f"Automatic import failed: {e}")
                         return {'CANCELLED'}
         except Exception as e:
             self.report({'ERROR'}, f"Failed to read ZIP file: {e}")
             return {'CANCELLED'}
-        self.report({'INFO'}, f"Selected file: {self.filepath}")
-        # 这里可以添加后续的zip处理逻辑
+        
         return {'FINISHED'}
 
+    def get_fab_assets_path(self, context):
+        """获取Fab资产路径"""
+        try:
+            # 获取插件首选项
+            addon_name = __name__.partition('.')[0] if '.' in __name__ else "ATBridge"
+            addon_prefs = context.preferences.addons.get(addon_name)
+            if addon_prefs and hasattr(addon_prefs.preferences, 'fab_assets_path'):
+                return getattr(addon_prefs.preferences, 'fab_assets_path', '')
+        except:
+            pass
+        return ''
+
     def invoke(self, context, event):
-        # 检查首选项中是否设置了Fab Assets Path
-        prefs = context.preferences.addons.get("ATBridge")
-        fab_assets_path = None
-        if prefs is not None:
-            fab_assets_path = prefs.preferences.fab_assets_path
-        if not fab_assets_path:
-            self.report({'ERROR'}, "Please set the Fab Assets Path in the plugin preferences!")
+        # 检查首选项中是否设置了有效路径
+        fab_assets_path = self.get_fab_assets_path(context)
+        if not fab_assets_path or not os.path.isdir(fab_assets_path):
+            self.report({'ERROR'}, "Please set a valid Fab Assets Path in addon preferences (Edit > Preferences > Add-ons > ATBridge)")
             return {'CANCELLED'}
+            
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
