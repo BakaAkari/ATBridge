@@ -637,7 +637,7 @@ class MS_Init_ImportProcess():
     #========================================================================================================================
     def GiveObjectsMaterial(self):
         act_obj = bpy.context.active_object
-        if act_obj.type == "MESH":
+        if act_obj is not None and act_obj.type == "MESH":
             print(self.assetType)
             if self.assetType == "surface":
                 qui_mat = bpy.data.materials[self.materialName]
