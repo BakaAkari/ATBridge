@@ -3,6 +3,7 @@ import os
 import zipfile
 from bpy.utils import register_class, unregister_class
 from bpy.types import AddonPreferences
+from .utils.translation import get_text
 
 # 插件首选项
 class AT_AddonPreferences(AddonPreferences):
@@ -14,16 +15,16 @@ class AT_AddonPreferences(AddonPreferences):
         description="Specify the path to extract Fab ZIP assets",
         subtype='DIR_PATH',
         default="D:/FabAssets"
-    ) # type: ignore
+    )  # type: ignore
 
     def draw(self, context):
         layout = self.layout
-        layout.label(text="ATBridge Settings:")
+        layout.label(text=get_text("ATBridge Settings:", context))
         
         # 简化的界面
         box = layout.box()
-        box.label(text="Fab Assets Configuration:", icon='PACKAGE')
-        box.prop(self, "fab_assets_path", text="Extract Path")
+        box.label(text=get_text("Fab Assets Configuration:", context), icon='PACKAGE')
+        box.prop(self, "fab_assets_path", text=get_text("Extract Path", context))
 
 # ZIP导入操作符
 class ATB_OT_import_zip(bpy.types.Operator):
