@@ -376,7 +376,7 @@ class MS_Init_ImportProcess():
 
         if self.isSpecularWorkflow:
             if "specular" in self.textureTypes:
-                self.CreateTextureNode("specular", -640, 460 - (self.TexCount * 260), 0, True, 5)
+                self.CreateTextureNode("specular", -640, 460 - (self.TexCount * 260), 0, True, self.GetBSDFInputName('specular'))
                 self.TexCount += 1
 
             if "gloss" in self.textureTypes:
@@ -385,10 +385,10 @@ class MS_Init_ImportProcess():
                 # Add glossNode to invertNode connection
                 self.mat.node_tree.links.new(invertNode.inputs[1], glossNode.outputs[0])
                 # Connect roughness node to the material parent node.
-                self.mat.node_tree.links.new(self.nodes.get(self.parentName).inputs[9], invertNode.outputs[0])
+                self.mat.node_tree.links.new(self.nodes.get(self.parentName).inputs[self.GetBSDFInputName('roughness')], invertNode.outputs[0])
                 self.TexCount += 1
             elif "roughness" in self.textureTypes:
-                self.CreateTextureNode("roughness", -640, 460 - (self.TexCount * 260), 1, True, 9)
+                self.CreateTextureNode("roughness", -640, 460 - (self.TexCount * 260), 1, True, self.GetBSDFInputName('roughness'))
                 self.TexCount += 1
         else:
             if "metalness" in self.textureTypes:
@@ -407,7 +407,7 @@ class MS_Init_ImportProcess():
                 # Add glossNode to invertNode connection
                 self.mat.node_tree.links.new(invertNode.inputs[1], glossNode.outputs[0])
                 # Connect roughness node to the material parent node.
-                self.mat.node_tree.links.new(self.nodes.get(self.parentName).inputs[9], invertNode.outputs[0])
+                self.mat.node_tree.links.new(self.nodes.get(self.parentName).inputs[self.GetBSDFInputName('roughness')], invertNode.outputs[0])
                 self.TexCount += 1
 
         if "opacity" in self.textureTypes:
@@ -583,7 +583,10 @@ class MS_Init_ImportProcess():
             displacementNode.inputs[2].default_value = 0.1
             displacementNode.inputs[1].default_value = 0.5
             # Add converter>RGB Separator node
-            RGBSplitterNode = self.CreateGenericNode("ShaderNodeSeparateRGB", -250, -550)
+            if bpy.app.version >= (3, 3, 0):
+                RGBSplitterNode = self.CreateGenericNode("ShaderNodeSeparateColor", -250, -550)
+            else:
+                RGBSplitterNode = self.CreateGenericNode("ShaderNodeSeparateRGB", -250, -550)
             # Import normal map and normal map node setup.
             displacementMapNode = self.CreateTextureNode("displacement", -640, 460 - (self.TexCount * 260))
             displacementMapNode.name = "Displacement Tex Node"
@@ -633,6 +636,22 @@ class MS_Init_ImportProcess():
         for item in self.textureList:
             if item[1] == textureType:
                 return item[0].lower()
+
+    def GetBSDFInputName(self, input_type):
+        """Handle Blender 4.0+ BSDF input changes"""
+        if bpy.app.version >= (4, 0, 0):
+            if input_type == 'specular':
+                return "Specular IOR Level"
+            if input_type == 'roughness':
+                return "Roughness"
+        else:
+            if input_type == 'specular':
+                return "Specular" if bpy.app.version >= (2, 80, 0) else 5 # Actually just name "Specular" usually works in 2.8+, but let's stick to simple names
+                # In old code it used index 5. 5 is Specular in 2.8-3.x
+                return 5
+            if input_type == 'roughness':
+                return 9
+        return input_type
 
     #========================================================================================================================
     def GiveObjectsMaterial(self):

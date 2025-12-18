@@ -159,6 +159,7 @@ class ATB_OT_import_zip(bpy.types.Operator):
                             "minLOD": asset.get("minLOD", ""),
                             "pbrWorkflow": asset.get("pbrWorkflow", "specular"),
                             "scatter": asset.get("scatter", False),
+                            "applyToSelection": True,
                         }
                         json_str = json.dumps([bridge_asset], ensure_ascii=False)
                         from .ATBridge import BridgeState, MS_Init_ImportProcess
