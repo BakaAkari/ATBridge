@@ -172,7 +172,12 @@ class MS_Init_ImportProcess():
                         self.ApplyToSelection = bool(self.json_data["applyToSelection"])
 
                     if self.isCycles:
-                        if bpy.context.scene.cycles.feature_set == 'EXPERIMENTAL':
+                        # Blender 5.0+ 移除了 feature_set 属性，默认支持自适应置换
+                        if hasattr(bpy.context.scene.cycles, 'feature_set'):
+                            if bpy.context.scene.cycles.feature_set == 'EXPERIMENTAL':
+                                self.DisplacementSetup = 'adaptive'
+                        else:
+                            # Blender 5.0+ 默认启用自适应置换
                             self.DisplacementSetup = 'adaptive'
 
                     texturesListName = "components"
@@ -499,10 +504,17 @@ class MS_Init_ImportProcess():
 
     def CreateTextureMultiplyNode(self, aTextureType, bTextureType, PosX, PosY, aPosX, aPosY, bPosX, bPosY, aColorspace,
                                   bColorspace, connectToMaterial, materialInputIndex):
-        #Add Color>MixRGB node, transform it in the node editor, change it's operation to Multiply and finally we colapse the node.
-        multiplyNode = self.CreateGenericNode('ShaderNodeMixRGB', PosX, PosY)
-        multiplyNode.blend_type = 'MULTIPLY'
-        multiplyNode.inputs[0].default_value = 1
+        # Blender 3.4+ 使用 ShaderNodeMix 替代 ShaderNodeMixRGB
+        if bpy.app.version >= (3, 4, 0):
+            multiplyNode = self.CreateGenericNode('ShaderNodeMix', PosX, PosY)
+            multiplyNode.data_type = 'RGBA'  # 设置为颜色模式
+            multiplyNode.blend_type = 'MULTIPLY'
+            multiplyNode.inputs['Factor'].default_value = 1.0
+        else:
+            multiplyNode = self.CreateGenericNode('ShaderNodeMixRGB', PosX, PosY)
+            multiplyNode.blend_type = 'MULTIPLY'
+            multiplyNode.inputs[0].default_value = 1
+        
         #Setup A and B nodes
         ColorNode = self.CreateTextureNode(aTextureType, aPosX, aPosY, aColorspace)
         ColorNode.name = "Color Tex Node"
@@ -516,9 +528,13 @@ class MS_Init_ImportProcess():
         if self.assetType == "surface":
             AONode.projection = "FLAT"
 
-        # Conned albedo and ao node to the multiply node.
-        self.mat.node_tree.links.new(multiplyNode.inputs['Color1'], ColorNode.outputs['Color'])
-        self.mat.node_tree.links.new(multiplyNode.inputs['Color2'], AONode.outputs['Color'])
+        # 连接 albedo 和 ao 节点到 multiply 节点
+        if bpy.app.version >= (3, 4, 0):
+            self.mat.node_tree.links.new(multiplyNode.inputs['A'], ColorNode.outputs['Color'])
+            self.mat.node_tree.links.new(multiplyNode.inputs['B'], AONode.outputs['Color'])
+        else:
+            self.mat.node_tree.links.new(multiplyNode.inputs['Color1'], ColorNode.outputs['Color'])
+            self.mat.node_tree.links.new(multiplyNode.inputs['Color2'], AONode.outputs['Color'])
 
         if connectToMaterial:
             self.ConnectNodeToMaterial(materialInputIndex, multiplyNode)
