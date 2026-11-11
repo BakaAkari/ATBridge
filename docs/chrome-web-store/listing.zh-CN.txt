@@ -1,0 +1,17 @@
+名称：ATBridge Fab Companion (Preview)
+简短说明：连接 Fab 浏览器会话与 Blender ATBridge，搜索已拥有的资产、下载 FBX ZIP 并交给 Blender 导入。
+主语言：简体中文
+建议分类：工具（以提交时控制台实际选项为准）
+
+详细说明：
+ATBridge Fab Companion 是 Blender ATBridge 插件的浏览器伴随扩展。你可以在 Blender 搜索 Fab 资产、检查是否已拥有、选择可用的 FBX ZIP，并通过 Chrome 下载后交给 Blender 校验和手动导入。
+
+首次连接无需复制长配对码：在 Blender 开启配对，在扩展中请求连接，核对两边的六位确认码并在 Blender 允许即可。连接窗口有效两分钟。手动配对码仍作为备用方式。
+
+需要安装配套 ATBridge Blender 插件，并保持本扩展连接页和已登录的 Fab 标签页打开。Fab 登录在官方网站完成，本扩展不读取或导出 Cookie，不要求输入 Epic 密码。
+
+当前为预览版：只下载账户已拥有资产的 FBX ZIP，单个包最大 1 GiB；Blender 导入主要支持带 Megascans 元数据的资产。不会购买、领取资产或代替用户接受许可。普通 FBX ZIP 不保证可导入。当前已验证 macOS、Chrome、Blender 5.2；不宣称已支持所有 Blender 历史版本。
+
+本扩展只为这项功能使用 Fab 页面和本机 Blender 连接。没有广告、分析统计或开发者数据接收服务器。搜索词会发送到 Fab；资产信息和下载文件路径会发送给本机 ATBridge。关闭连接页停止接收新任务，停止 Blender 服务撤销配对。下载的 ZIP 和 Blender 缓存保留在电脑上，用户可自行清理。
+
+ATBridge 为独立第三方项目，不隶属于 Epic Games、Fab、Google 或 Blender。使用 Fab 网站接口，接口变化可能导致功能暂时不可用。

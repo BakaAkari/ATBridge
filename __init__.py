@@ -26,6 +26,7 @@ from . import preferences
 from . import properties
 from . import tools
 from . import ui
+from .companion import blender_ui as companion_ui
 from .operators.alembic_import import MS_Init_Abc
 
 
@@ -62,6 +63,7 @@ def register():
     
     # 4. 注册 UI 面板
     ui.register()
+    companion_ui.register()
     
     # 5. 注册事件处理
     if load_plugin not in bpy.app.handlers.load_post:
@@ -91,6 +93,7 @@ def unregister():
         pass
     
     # 注销子模块（逆序）
+    companion_ui.unregister()
     ui.unregister()
     preferences.unregister()
     tools.unregister()

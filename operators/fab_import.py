@@ -12,6 +12,7 @@ import zipfile
 from ..state.bridge_state import BridgeState
 from ..core.import_manager import ImportManager
 from ..utils.logger import ATBridgeLogger as log
+from ..utils.zip_safety import validate_zip, extract_checked
 
 
 class ATB_OT_import_zip(bpy.types.Operator):
@@ -23,6 +24,8 @@ class ATB_OT_import_zip(bpy.types.Operator):
     
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")  # type: ignore
     
+    cache_directory: bpy.props.StringProperty(subtype="DIR_PATH", options={'HIDDEN'})
+
     # 贴图类型标准化映射
     BASECOLOR_NAMES = ["basecolor", "albedo", "diffuse", "col", "color"]
     
@@ -65,6 +68,7 @@ class ATB_OT_import_zip(bpy.types.Operator):
     def _extract_and_parse(self, fab_path: str) -> dict:
         """解压并解析 ZIP 文件"""
         with zipfile.ZipFile(self.filepath, 'r') as zip_ref:
+            validate_zip(zip_ref)
             # 查找 JSON 文件
             json_files = [f for f in zip_ref.namelist() if f.lower().endswith('.json')]
             if not json_files:
@@ -90,7 +94,7 @@ class ATB_OT_import_zip(bpy.types.Operator):
             # 创建目标目录并解压
             target_dir = os.path.join(fab_path, os.path.splitext(zip_filename)[0])
             os.makedirs(target_dir, exist_ok=True)
-            zip_ref.extractall(target_dir)
+            extract_checked(zip_ref, target_dir)
             log.info(f"解压完成: {target_dir}")
         
         # 构建 Megascans 兼容数据
@@ -108,6 +112,7 @@ class ATB_OT_import_zip(bpy.types.Operator):
         
         # 解析贴图
         components = []
+        seen_components = set()
         for m in asset_json.get('maps', []):
             if 'uri' not in m:
                 continue
@@ -132,6 +137,10 @@ class ATB_OT_import_zip(bpy.types.Operator):
                 ext = os.path.splitext(m['uri'])[1].lower()
                 fmt = ext[1:] if ext.startswith('.') else ext
             
+            component_key = (map_type, os.path.realpath(found_path))
+            if component_key in seen_components:
+                continue
+            seen_components.add(component_key)
             components.append({
                 'type': map_type,
                 'format': fmt,
@@ -140,6 +149,7 @@ class ATB_OT_import_zip(bpy.types.Operator):
         
         # 解析模型
         mesh_list = []
+        seen_meshes = set()
         for m in asset_json.get('models', []):
             if 'uri' not in m:
                 continue
@@ -154,13 +164,18 @@ class ATB_OT_import_zip(bpy.types.Operator):
             else:
                 continue
             
-            found_path = self._smart_find_model(all_files, asset_id, mesh_format)
-            if found_path:
+            found_path = self._smart_find_model(all_files, asset_id, mesh_format, m['uri'])
+            mesh_key = os.path.realpath(found_path) if found_path else None
+            if found_path and mesh_key not in seen_meshes:
+                seen_meshes.add(mesh_key)
                 mesh_list.append({
                     'format': mesh_format,
                     'path': found_path,
                 })
         
+        if asset_json.get('models') and not mesh_list:
+            raise ValueError('No unambiguous supported model found in ZIP')
+
         # 安全获取资产名称
         asset_name = (asset_json.get('name') or 
                      asset_json.get('displayName') or 
@@ -196,7 +211,7 @@ class ATB_OT_import_zip(bpy.types.Operator):
         
         return sorted(candidates, key=len)[0] if candidates else None
     
-    def _smart_find_model(self, all_files: list, asset_id: str, mesh_format: str) -> str:
+    def _smart_find_model(self, all_files: list, asset_id: str, mesh_format: str, uri: str = "") -> str:
         """智能查找模型文件"""
         asset_id_lower = asset_id.lower()
         ext = '.' + mesh_format.lower()
@@ -207,10 +222,20 @@ class ATB_OT_import_zip(bpy.types.Operator):
             if asset_id_lower in fname and fname.endswith(ext):
                 candidates.append(f)
         
-        return sorted(candidates, key=len)[0] if candidates else None
+        exact = [f for f in candidates if f.replace(os.sep, '/').endswith('/' + uri)]
+        if len(exact) == 1:
+            return exact[0]
+        named = [f for f in candidates if os.path.basename(f).lower() == os.path.basename(uri).lower()]
+        if len(named) == 1:
+            return named[0]
+        if len(candidates) > 1:
+            raise ValueError('Multiple models match metadata; select a single-quality package')
+        return candidates[0] if candidates else None
     
     def _get_fab_assets_path(self, context) -> str:
         """获取 Fab 资产路径"""
+        if self.cache_directory:
+            return self.cache_directory
         try:
             from ..preferences import get_addon_preferences
             prefs = get_addon_preferences(context)

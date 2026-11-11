@@ -1,0 +1,27 @@
+Draft — not submitted
+
+Single purpose:
+Connect the user's Fab browser session to their local Blender ATBridge add-on for searching assets, checking ownership, downloading eligible FBX ZIP files, and handing them to Blender for user-initiated import.
+
+Permissions:
+scripting: execute the packaged fabRequest function in an isolated world in an already-open https://www.fab.com tab. The function makes a fixed set of Fab requests; downloaded content is never executed as extension code.
+downloads: start a user-selected asset ZIP download, inspect only that returned download ID for completion/local filename/size, and cancel that download on user cancellation. The implementation does not enumerate general download history.
+https://www.fab.com/*: find an open Fab tab and make authenticated, same-origin Fab requests using the browser session. We do not access chrome.cookies or export cookies.
+http://127.0.0.1/*: communicate with a Blender opt-in loopback service. Code is fixed to port 28481; Chrome match patterns do not restrict ports. Origin+session bearer authentication protects jobs; short-lived pairing requests require confirmation inside Blender. No native messaging host is installed.
+
+Remote code: No. All JavaScript is included in the ZIP. Fab JSON and asset archives are data, not evaluated JavaScript. Blender executes only its separately installed add-on code.
+
+Data handling disclosure for dashboard review:
+Do not claim "no data used" simply because there is no developer server. This extension processes user-entered search terms, selected asset IDs, Fab ownership responses, asset/file metadata, signed download URLs, a local pairing token, and local download paths. Fab receives normal authenticated requests; the paired Blender service receives task results and file paths. No developer telemetry, advertising, sale of data, or general browsing-history collection. Before submitting, map these facts to the then-current dashboard categories (notably authentication information and website content/user activity as applicable), consistently with privacy.html. Developer must personally confirm all certifications; this draft makes none on their behalf.
+
+Reviewer setup:
+1. Install the matching ATBridge add-on build containing companion/ (the prior published v0.4.0 does not contain these unpublished changes). Publish or attach an accessible matching build before submission; do not point reviewers at an incompatible release.
+2. Tested on Blender 5.2 macOS. In View3D sidebar ATBridge > Fab Companion set Chrome download root, then start connection.
+3. Open extension from Chrome toolbar. Click Request connection, compare six-digit code with Blender, and approve in Blender.
+4. Open Fab and sign in using a reviewer's own Epic account. No developer credentials are supplied. Open tabs must stay open.
+5. Search a keyword in Blender, select listing, request ownership / FBX files. Unowned asset produces NOT_OWNED without purchase. Download review needs an account-owned supported asset; do not require reviewer to buy or accept new licensing silently.
+6. Select an FBX ZIP <=1 GiB, download. Blender checks size/CRC/archive paths/hash; manually import. Compatible Megascans metadata is required for full import.
+7. Deny a pairing request, let one expire, and retry. Stop Blender to revoke connection. Manual64-character fallback remains available.
+
+Known boundaries:
+Website APIs are not a verified public Fab integration contract. Listing approval is not guaranteed. Full Windows/Linux and historical Blender compatibility, natural timed Fab expiry/relogin, and general non-Megascans ZIP support are not validated.

@@ -68,6 +68,9 @@ class ImportManager:
         # 导入几何体
         objects, abc_paths = GeometryImporter.import_meshes(asset.meshes)
         
+        if asset.meshes and not objects and not abc_paths:
+            raise ValueError('No model objects were imported')
+
         # 构建材质
         builder = MaterialBuilder(asset)
         material = builder.build()
