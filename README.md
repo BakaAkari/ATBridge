@@ -1,124 +1,97 @@
-# ATBridge Plugin
+# ATBridge
 
-## Introduction
-#### [中文]
-ATBridge是集成了ATB功能的Quixel Bridge桥接插件, 内置了一些常用功能
-#### [English]
-ATBridge is a plugin for Quixel Bridge that integrates a set of convenient tools for personal use.
+**在 Blender 里浏览 Fab / Megascans，下载后一键导入带材质的模型。** 同时提供 Quixel Bridge LiveLink 和一组常用的 ATools 工具。
 
-## Features
-#### [中文]
-- Quixel Bridge资产导入
-- Fab ZIP文件导入功能
-- 一键翻译中英文功能
-- 一键模型清理功能
-- 物理模拟工具
-- 集合重命名功能
+[English](README.en.md) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/BakaAkari/ATBridge/issues) · GitHub: [BakaAkari/ATBridge](https://github.com/BakaAkari/ATBridge) · Gitee 镜像: [baka-akari/ATBridge](https://gitee.com/baka-akari/ATBridge)
 
-#### [English]
-- Quixel Bridge asset import
-- Fab ZIP file import functionality
-- One-click Chinese/English translation
-- One-click model cleanup
-- Physics simulation tools
-- Collection renaming functionality
+![Blender 4.2+](https://img.shields.io/badge/Blender-4.2%2B-orange) ![License LGPL-3.0](https://img.shields.io/badge/license-LGPL--3.0-blue)
 
-## Fab ZIP File Import Configuration
-#### [中文]
-**首次使用前必须配置解压路径：**
-1. 打开 Blender 首选项：`编辑` > `首选项` > `插件`
-2. 搜索并找到 "ATBridge" 插件
-3. 展开插件设置，在 "Fab Assets Configuration" 部分设置 "Extract Path"
-4. 选择一个用于解压Fab ZIP文件的文件夹路径
-5. 设置完成后，3D视图区域顶部将显示 "Import Fab Asset" 按钮
+> 0.5.0 目前为 Beta 版本。欢迎试用并反馈问题。
 
-**使用方法：**
-1. 确保已配置解压路径
-2. 点击3D视图顶部的 "Import Fab Asset" 按钮
-3. 选择要导入的Fab ZIP文件
-4. 插件会自动解压并导入资产到Blender
+## 功能
 
-#### [English]
-**Extraction path must be configured before first use:**
-1. Open Blender Preferences: `Edit` > `Preferences` > `Add-ons`
-2. Search for and find the "ATBridge" addon
-3. Expand addon settings, set "Extract Path" in the "Fab Assets Configuration" section
-4. Choose a folder path for extracting Fab ZIP files
-5. After configuration, "Import Fab Asset" button will appear in the 3D viewport header
+| 功能 | 说明 | 平台 |
+|---|---|---|
+| Fab 独立浏览器 | 在 ATBridge 自带的窗口里登录 Fab、浏览 Megascans、下载资产；带下载面板，不需要安装浏览器扩展 | Windows |
+| 资产收件区 | 自动发现下载好的资产 ZIP，显示名称、格式、贴图分辨率和商品预览图，一键导入到场景 | 全平台 |
+| 本地 ZIP 导入 | 也可以从电脑上手动选择资产 ZIP 导入，不需要预先设置解压目录 | 全平台 |
+| Quixel Bridge LiveLink | 接收 Quixel Bridge 的导出 | 全平台 |
+| ATools 工具 | 一键切换中英文界面、模型清理、按集合重命名对象、导入图像为平面、快速物理模拟、时间轴工具 | 全平台 |
 
-**Usage:**
-1. Ensure extraction path is configured
-2. Click the "Import Fab Asset" button in the 3D viewport header
-3. Select the Fab ZIP file to import
-4. The plugin will automatically extract and import assets into Blender
+界面支持简体中文和英文，跟随 Blender 的界面语言。
 
-## Change Log
-### Version 0.2.0 (Latest)
+## 系统要求
 
-#### [中文]
-- 🔧 修复首选项中fab zip文件解压路径设置功能
-- ✨ 改进首选项界面，增加更详细的配置说明
-- ✨ 添加智能UI切换：未配置路径时显示设置按钮，已配置时显示导入按钮
-- 🔧 优化首选项获取逻辑，提高兼容性
-- ✨ 增加首选项快捷访问功能
+- Blender 4.2 或更高版本（已在 4.2 LTS 和 5.2 LTS 上测试）
+- Fab 独立浏览器：Windows 10 / 11 x64，需要 Microsoft Edge WebView2 运行库（Windows 一般自带）
+- macOS / Linux：除独立浏览器外的功能均可用；在系统浏览器里下载 Fab 资产后，用收件区或本地 ZIP 导入
 
-#### [English]
-- 🔧 Fixed fab zip file extraction path setting in preferences
-- ✨ Improved preferences interface with detailed configuration instructions
-- ✨ Added smart UI switching: shows setup button when unconfigured, import button when configured
-- 🔧 Optimized preferences retrieval logic for better compatibility
-- ✨ Added quick access to preferences functionality
+## 安装
 
-### Version 4.0.1
+1. 在 [Releases](https://github.com/BakaAkari/ATBridge/releases)（或 Gitee 发行版）下载安装包：
+   - Windows：`ATBridge_<版本>_windows-x64.zip`（包含独立浏览器）
+   - macOS / Linux：`ATBridge_<版本>.zip`
+2. Blender 中打开 **编辑 → 偏好设置 → 插件**，点右上角下拉菜单里的 **从磁盘安装…**，选择下载的 ZIP（不用解压）。
+3. 勾选启用 **ATBridge**。
 
-#### [中文]
-- 修复Atlas, Decal等非Surface, 3D Assets资产导入, Normal map丢失问题
-- 重构link.new的方法, 解决Alpha贴图连接BSDF错误的问题
-- 优化一键切换中英文功能, 修复zh_CN报错问题
-- 优化一键物理模拟功能, 调整刚体响应距离为0.001, 缩短被动碰撞距离
-- 修复Scene name不是默认"Scene"的情况下, Timeline Tools失效报错的问题
-#### [English]
-- Repair Atlas, Decal and other non-Surface, 3D Assets assets import, Normal map loss problem.
-- Refactor the link.new method to fix the issue with Alpha maps incorrectly connecting to BSDF.
-- Optimize the one-click toggle between English and Chinese, fix the zh_CN error issue.
-- Optimize the one-click physics simulation feature, set the rigid body response distance to 0.001, reduce the passive collision distance.
-- Fixed the issue where Timeline Tools would fail and give an error if the Scene name wasn't set to the default "Scene".
+从旧版本升级：先在插件列表里移除旧版 ATBridge，重启 Blender，再安装新版本。
 
-### Version 4.0.0
+## 快速开始：导入 Fab 资产
 
-#### [中文]
-- 新增了一键翻译中英文功能，位于窗口右下角
-- 新增了一键模型清理功能，包括但不限于锐化边缘、缝合边缘和倒角权重
-- 增加了一键根据集合名称重命名对象的功能，强制以Collection名称重命名内含Object以在一定程度上规范文件目录
-- 增加导入图像, 根据图像尺寸正确缩放Plane长宽
-- 添加Quick Physics工具
-#### [English]
-- Added a one-click feature to translate between Chinese and English, located at the bottom right of the window, and it only provides the translation results.
-- Added a one-click model cleanup feature that includes, but is not limited to, sharpening edges, stitching edges, and chamfer weights.
-- Added a feature to rename objects with a single click based on the collection name, enforcing a standardized file structure by renaming contained objects after the collection.
-- Add images, scale the plane to the correct size based on the image dimensions.
-- Add the Quick Physics tool.
+1. 在 3D 视图按 `N` 打开侧栏，进入 **ATBridge → Fab 资产**。
+2. 点 **浏览 Fab 资产**，在打开的窗口里登录 Fab，找到资产后下载 ZIP。首次使用需要登录，登录信息只保存在这个窗口里。
+3. 下载完成后点 **返回 Blender**。资产会自动出现在收件区列表中，选中后可以查看预览和资产信息。
+4. 点 **导入到场景**。
 
-## Installation
-#### [中文]
-- 使用Blender插件安装界面直接安装
-- 首次安装前建议关闭Quixel Bridge, 安装好插件后重启Blender再开启Quixel Bridge
-#### [English]
-- Install directly using the Blender plugin interface.
-- Before the initial setup, it's recommended to close Quixel Bridge. After installing the plugin, restart Blender and then reopen Quixel Bridge.
+不用独立窗口也可以：在任意浏览器里下载 ZIP，然后在收件区选择，或点 **从电脑选择 ZIP…**。
 
-## Usage
-#### [中文]
-- Quixel Bridge设置: Edit > Export Settings > Export Target设置为Custom Socket Export, Socket Port设置为23333
-- Tips: Export Settings > Models > LODs设置不要设置为Highpoly Source, 该设置无法正确导入贴图
-#### [English]
-- In Quixel Bridge, go to Edit > Export Settings, set Export Target to Custom Socket Export, and set the Socket Port to 23333
-- Tips: In the Export Settings under Models, don't set LODs to Highpoly Source as it won't import textures correctly
+### 支持的资产
 
-## Contact
-- QQ群: 628731557
-- Email: exwww2000@qq.com
+- 含 Megascans 元数据的 Fab 资产 ZIP：FBX / OBJ 模型和材质（Surface、Decal、Atlas 等）
+- 暂不支持：Alembic（ABC）包、没有 Megascans 元数据的普通 ZIP、单个 ZIP 内包含多个资产
 
-![Image text](https://gitee.com/baka-akari/images_lib/raw/master/%E5%8A%A8%E7%94%BB%2025.gif)
-![Image text](https://gitee.com/baka-akari/images_lib/raw/master/%E5%8A%A8%E7%94%BB%2027.gif)
-![Image text](https://gitee.com/baka-akari/images_lib/raw/master/%E5%8A%A8%E7%94%BB%2026.gif)
+不支持的包默认不显示，可以在 **设置与其他入口** 里勾选 **显示不支持的 ZIP** 查看原因。
+
+## Quixel Bridge LiveLink
+
+1. 在 Quixel Bridge 中打开 **Edit → Export Settings**，**Export Target** 设为 **Custom Socket Export**，**Socket Port** 设为 **23333**。
+2. 在 Bridge 里点导出，资产会进入当前 Blender 场景。
+
+提示：**Models → LODs** 不要设为 **Highpoly Source**，否则贴图无法正确导入。首次安装建议先关闭 Bridge，装好插件并重启 Blender 后再打开 Bridge。
+
+## 数据与隐私
+
+| 数据 | 位置 |
+|---|---|
+| 独立浏览器的登录数据 | `%LOCALAPPDATA%\ATBridge\FabBrowser`（不读取你平时浏览器的 Cookie） |
+| 商品预览图缓存 | `%LOCALAPPDATA%\ATBridge\Cache\Fab`（上限 256 MB，90 天过期） |
+| 下载的 ZIP | 你设置的下载目录下的 `ATBridge\` 子目录 |
+| 解压后的资产 | 插件设置里的解压目录；留空时使用 Blender 数据目录下的 `ATBridge/assets` |
+| 导入记录 | Blender 配置目录下的 `ATBridge/imports.json`（最多 200 条） |
+
+ATBridge 不会替你购买、领取资产或接受许可，这些操作都由你在 Fab 网站上自己完成。解压后的贴图被场景引用，请不要删除正在使用的资产目录。
+
+## 常见问题
+
+**点“浏览 Fab 资产”只打开了系统浏览器？** 你安装的是不含独立浏览器的通用包，或者当前系统不是 Windows。在 Windows 上请改装 `windows-x64` 安装包。
+
+**下载完成了，但收件区里没有出现？** 确认下载目录设置和实际下载位置一致（插件偏好设置 → 下载目录）。独立窗口打开期间，下载目录会被锁定。如果包不受支持，需要勾选“显示不支持的 ZIP”才能看到它和原因。
+
+**导入失败？** 先看收件区显示的原因。如果是不支持的格式，请在 Fab 下载 FBX 版本。仍然失败的话，请附上 Blender 版本、资产名称和报错信息[提交问题](https://github.com/BakaAkari/ATBridge/issues)。
+
+## 声明
+
+ATBridge 是个人开发的非官方插件，与 Epic Games、Fab、Quixel 没有关联。通过 ATBridge 下载和使用的资产，仍需遵守 Fab 的许可条款。
+
+## 参与开发
+
+从源码运行、热重载和测试见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)，发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
+
+## 联系方式
+
+- QQ 群：628731557
+- 邮箱：exwww2000@qq.com
+
+## 许可证
+
+[LGPL-3.0](LICENSE)
