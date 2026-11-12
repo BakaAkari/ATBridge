@@ -38,8 +38,10 @@ def assets_for(tag):
 
 def check_tag(tag):
     for remote in ('origin', 'gitee'):
-        out = subprocess.run(['git', 'ls-remote', '--tags', remote, tag], cwd=ROOT, capture_output=True, text=True).stdout
-        if tag not in out:
+        r = subprocess.run(['git', 'ls-remote', '--tags', remote, tag], cwd=ROOT, capture_output=True, text=True)
+        if r.returncode != 0:
+            sys.exit(f'cannot reach {remote} (check SSH key / network):\n{r.stderr.strip()}')
+        if tag not in r.stdout:
             sys.exit(f'tag {tag} is not on {remote}; push it first')
 
 
