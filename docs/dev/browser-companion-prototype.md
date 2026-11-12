@@ -1,4 +1,22 @@
+> 历史归档：旧版 Blender 扩展连接面板及其测试入口已移除。以下记录用于追溯，不是现行操作指南；当前流程请见 README。
+
+# 当前免扩展交互
+
+2026-11-11：新主入口为“浏览 Fab 资产”，下载自动识别，手动导入；目录、普通浏览器和旧扩展开关收进设置。独立窗口提供每项下载进度与取消、完成定位和失败回来源页。完整现行使用方式见 [README](../README.md)。以下保留原型迭代与旧扩展机制，旧按钮名称以 README 为准。
+
 # Fab browser companion prototype
+
+## Windows extension-free experiment (2026-11-11)
+
+The extension is now optional. `ui/fab_panel.py` offers the system Fab website, a separate experimental Windows WebView2 browser, recent downloads and direct ZIP selection. See the Windows section in the repository README for build/run instructions. The old extension panel remains available and collapsed by default; the historical flow below still describes that implementation.
+
+`browser/` is an independent .NET 10 WinForms process, not Python packages injected into Blender. It uses a dedicated WebView2 user-data directory under LOCALAPPDATA/ATBridge/FabBrowser, with host objects and web messages disabled. It does not export browser cookies or call undocumented Fab APIs. Official website UI handles authentication and asset selection. Downloads are ZIP-only, isolated by a random folder, and published with the ZIP suffix only after WebView2 reports completion. Blender does not trust a ZIP merely because it is listed; normal ZIP validation and asset metadata parsing run on explicit import.
+
+Verified on this Windows machine: native WebView2 renders the Fab homepage; an actual native local fixture exercises window.open/window.close, completed download notification, unchanged downloaded bytes, duplicate filenames and test-cookie persistence between two helper processes. Blender 5.2.3 regression imports a renamed uppercase ZIP with unrelated JSON, automatically creates an unset extraction directory and isolates repeated extraction folders. The user then confirmed actual Fab sign-in and ZIP download in this independent window. The same downloaded Historic Gemstone Mineral Sodalite Stone Hard 02 Low ZIP (7,452,171 bytes, asset ujyjbi0) was imported through the new recent-list operators in a separate factory-startup Blender process: one mesh, 500 vertices, 996 polygons and five loaded 1024x1024 material images. Existing user scenes were not modified; rendering and all sign-in methods were not tested. No user-agent spoofing or verification bypass is implemented.
+
+Independent review found and verified fixes for early Refresh, page-requested popup closure and rejected metadata conversion cache cleanup. A further slow-download fixture reproduced a popup closing while its download was active. Page-requested closure now waits for active downloads to reach a terminal state; explicit user/owner closure still cancels. The independent reproduction then downloaded all 524,408 bytes, published the final ZIP, closed the popup and exited successfully. This lifecycle fix was tested locally after the user-confirmed live download, rather than claiming a second full Fab download.
+
+The recent list is manually refreshed, limited to 20 entries, and scans only the chosen directory and ATBridge/<job>/ directories. Incomplete .partial files are hidden. There is no automatic scene import, arbitrary native JavaScript bridge, localhost pairing server, or browser extension involved in this new route. Imported image paths depend on the retained extraction cache.
 
 This is an opt-in development prototype, not an official Fab integration. Blender package version and compatibility claims are unchanged. The tested Blender runtime is 5.2.0 LTS on macOS; the existing Blender 2.8+ compatibility/CI work is separate.
 
