@@ -1,2 +1,16 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Text files are stored and checked out with LF on every platform, so release packages
+# built on Windows and macOS are byte-identical (overrides core.autocrlf).
+* text=auto eol=lf
+
+# Windows batch files require CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets: never touch.
+*.blend binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
+*.dll binary
+*.exe binary
