@@ -2,7 +2,7 @@
 
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。1.0 之前，新增功能和不兼容变更都升次版本号。
 
-## [0.5.0-beta.1] - 未发布
+## [0.5.0-beta.1] - 2026-11-12
 
 ### 新增
 - **Fab 独立浏览器（Windows）**：在 ATBridge 自带的 WebView2 窗口里登录 Fab、浏览 Megascans 并下载，不需要浏览器扩展。带下载面板（进度、取消、中断后回到商品页）、商品预览图缓存和“返回 Blender”。
@@ -60,7 +60,7 @@
 - 导入图像时按图像尺寸缩放平面。
 - 新增快速物理工具。
 
-[0.5.0-beta.1]: https://github.com/BakaAkari/ATBridge/compare/v0.4.0...release/0.5.0
+[0.5.0-beta.1]: https://github.com/BakaAkari/ATBridge/releases/tag/v0.5.0-beta.1
 [0.4.0]: https://github.com/BakaAkari/ATBridge/releases/tag/v0.4.0
 [0.2.7]: https://github.com/BakaAkari/ATBridge/releases/tag/v0.2.7
 [0.2.6]: https://github.com/BakaAkari/ATBridge/releases/tag/v0.2.6
