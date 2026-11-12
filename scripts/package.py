@@ -53,6 +53,7 @@ def write_zip(target, extra=None):
                 info = zipfile.ZipInfo('ATBridge/' + f.relative_to(ROOT).as_posix(), (2020, 1, 1, 0, 0, 0))
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o644 << 16
+                info.create_system = 3  # same header on every OS
                 z.writestr(info, f.read_bytes())
         if extra:
             base, prefix = extra
@@ -60,6 +61,7 @@ def write_zip(target, extra=None):
                 info = zipfile.ZipInfo(f'ATBridge/{prefix}/' + f.relative_to(base).as_posix(), (2020, 1, 1, 0, 0, 0))
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o755 << 16 if f.suffix == '.exe' else 0o644 << 16
+                info.create_system = 3
                 z.writestr(info, f.read_bytes())
 
 
