@@ -59,8 +59,38 @@ class MaterialBuilder:
         self.mat.use_nodes = True
         
         self.factory = NodeFactory(self.mat.node_tree)
-        self.bsdf_node = self.mat.node_tree.nodes.get('Principled BSDF')
-        self.output_node = self.mat.node_tree.nodes.get('Material Output')
+        # Default node names are translated when Blender translates new data names.
+        # Node identifiers remain stable across interface languages and user renames.
+        nodes = self.mat.node_tree.nodes
+        self.output_node = next((node for node in nodes if node.bl_idname == 'ShaderNodeOutputMaterial'
+                                 and node.is_active_output), None)
+        if self.output_node is None:
+            self.output_node = next((node for node in nodes if node.bl_idname == 'ShaderNodeOutputMaterial'), None)
+        if self.output_node is None:
+            self.output_node = nodes.new('ShaderNodeOutputMaterial')
+        # Prefer the shader that actually feeds the active output. A material may
+        # retain disconnected old Principled nodes that must not receive new maps.
+        pending = [link.from_node for link in self.output_node.inputs['Surface'].links]
+        visited = set()
+        self.bsdf_node = None
+        while pending:
+            node = pending.pop(0)
+            if node.as_pointer() in visited:
+                continue
+            visited.add(node.as_pointer())
+            if node.bl_idname == 'ShaderNodeBsdfPrincipled':
+                self.bsdf_node = node
+                break
+            pending.extend(link.from_node for socket in node.inputs for link in socket.links)
+        if self.bsdf_node is None:
+            named = nodes.get('Principled BSDF')
+            if named and named.bl_idname == 'ShaderNodeBsdfPrincipled':
+                self.bsdf_node = named
+            else:
+                shaders = [node for node in nodes if node.bl_idname == 'ShaderNodeBsdfPrincipled']
+                self.bsdf_node = shaders[0] if len(shaders) == 1 else nodes.new('ShaderNodeBsdfPrincipled')
+        if not self.output_node.inputs['Surface'].is_linked:
+            self.mat.node_tree.links.new(self.bsdf_node.outputs['BSDF'], self.output_node.inputs['Surface'])
     
     def _setup_mapping(self) -> None:
         """设置 UV Mapping（非 3D/3DPlant 资产）"""

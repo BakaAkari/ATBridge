@@ -81,8 +81,12 @@ class GeometryImporter:
             导入的对象列表
         """
         try:
-            params = BlenderCompat.get_obj_import_params()
-            bpy.ops.import_scene.obj(filepath=filepath, **params)
+            if bpy.app.version >= (4, 0, 0):
+                bpy.ops.wm.obj_import(filepath=filepath, use_split_objects=True,
+                                      use_split_groups=True, clamp_size=1.0)
+            else:
+                params = BlenderCompat.get_obj_import_params()
+                bpy.ops.import_scene.obj(filepath=filepath, **params)
             selected = cls._get_selected_objects()
             log.debug(f"OBJ 导入成功: {filepath} ({len(selected)} 个对象)")
             return selected
