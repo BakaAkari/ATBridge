@@ -155,3 +155,7 @@ cython_debug/
 
 # Promo/video projects live outside the add-on repository
 media/
+
+# IDE settings
+.idea/
+.vscode/
