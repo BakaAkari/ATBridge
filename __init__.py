@@ -10,12 +10,13 @@ from bpy.app.handlers import persistent
 # 插件元信息
 bl_info = {
     "name": "ATBridge",
-    "description": "Baka_Akari Quixel Bridge Toolkit",
+    "description": "Fab / Megascans asset browser and importer, Quixel Bridge LiveLink and ATools utilities",
     "author": "Baka_Akari",
-    "version": (0, 4, 0),
-    "blender": (4, 0, 0),
-    "location": "View3D",
-    "wiki_url": "https://docs.quixel.org/bridge/livelinks/blender/info_quickstart.html",
+    "version": (0, 5, 0),
+    "blender": (4, 2, 0),
+    "location": "View3D > Sidebar > ATBridge",
+    "doc_url": "https://github.com/BakaAkari/ATBridge#readme",
+    "tracker_url": "https://github.com/BakaAkari/ATBridge/issues",
     "support": "COMMUNITY",
     "category": "3D View"
 }

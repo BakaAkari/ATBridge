@@ -248,7 +248,10 @@ class ATB_OT_fab_local(bpy.types.Operator):
                 else:
                     executable = _browser_executable()
                     if sys.platform != 'win32' or not executable.is_file():
-                        raise ValueError('独立窗口不可用；请在其他入口使用普通浏览器。')
+                        # Add-on-only package: fall back to the system browser instead of failing.
+                        webbrowser.open('https://www.fab.com/sellers/Quixel')
+                        self.report({'INFO'}, message_text('此安装包不含独立窗口，已用系统浏览器打开 Fab；安装 Windows 完整包可使用独立窗口。', context))
+                        return {'FINISHED'}
                     destination = str(_download_folder(context))
                     _browser = subprocess.Popen([str(executable), '--blender-pid', str(os.getpid()),
                                                  '--language', get_language(context),

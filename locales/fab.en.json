@@ -107,6 +107,7 @@
   "浏览器尚未准备好，请稍候或重新加载。": "Browser is not ready. Please wait or reload.",
   "清除已结束记录": "Clear finished",
   "独立窗口不可用；请在其他入口使用普通浏览器。": "The ATBridge browser is unavailable. Use your regular browser from Settings.",
+  "此安装包不含独立窗口，已用系统浏览器打开 Fab；安装 Windows 完整包可使用独立窗口。": "This package has no ATBridge browser, so Fab opened in your system browser. Install the Windows package to use the built-in browser.",
   "独立窗口构建路径无效，请重新构建": "Invalid browser build path. Rebuild the browser.",
   "用普通浏览器打开 Fab": "Open Fab in default browser",
   "留空使用 Blender 数据目录，无需首次配置": "Leave blank to use Blender's data folder. No setup required.",
