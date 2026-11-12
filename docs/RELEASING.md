@@ -54,4 +54,4 @@ python3 scripts/publish.py v0.5.0-beta.2        # 创建 GitHub 与 Gitee 发行
 ## 发布后
 
 - 从两个发布页各下载一次安装包，核对 `SHA256SUMS.txt`。
-- 在干净的 Blender 中从磁盘安装 Windows 包，确认插件能启用、独立浏览器能打开。
+- 在干净的 Blender 中从磁盘安装 Windows 包，确认插件能启用；再解压该包，在 Windows 上运行 `ATB_BROWSER_EXE=<解压目录>/ATBridge/bin/fab-browser/ATBridge.FabBrowser.exe python tests/browser_probe.py`，确认独立浏览器能启动并完成下载。
