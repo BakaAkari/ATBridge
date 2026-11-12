@@ -6,6 +6,7 @@
 """
 import bpy
 from bpy.utils import register_class, unregister_class
+from ..utils.translation import get_language
 
 
 def stop_playback(scene):
@@ -94,7 +95,7 @@ class LanguageToggleOperator(bpy.types.Operator):
 
     def execute(self, context):
         try:
-            viewlanguage = context.preferences.view.language
+            viewlanguage = get_language(context)
             prefview = context.preferences.view
             
             if viewlanguage == "en_US":
@@ -108,6 +109,8 @@ class LanguageToggleOperator(bpy.types.Operator):
                     except:
                         context.preferences.view.language = "zh_TW"
                 prefview.use_translate_new_dataname = False
+                prefview.use_translate_interface = True
+                prefview.use_translate_tooltips = True
             else:
                 current_lang = "中文"
                 target_lang = "English"

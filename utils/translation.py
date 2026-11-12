@@ -1,6 +1,19 @@
 # ATBridge 翻译系统
 import bpy
 from typing import Dict, Optional
+from .localization import ENGLISH, normalize_language, translate, translate_message
+
+
+def get_language(context=None):
+    context = context or bpy.context
+    view = context.preferences.view
+    if not getattr(view, 'use_translate_interface', True):
+        return 'en_US'
+    return normalize_language(view.language, bpy.app.translations.locale)
+
+
+def message_text(message, context=None):
+    return translate_message(message, get_language(context))
 
 class ATBridgeTranslationManager:
     """ATBridge翻译管理器"""
@@ -69,8 +82,7 @@ class ATBridgeTranslationManager:
             context = bpy.context
         
         # 获取当前语言设置
-        current_lang = context.preferences.view.language
-        is_chinese = current_lang not in ["en_US"]
+        is_chinese = get_language(context) == 'zh_CN'
         
         # 从翻译字典获取文本
         if key in self._translations:
@@ -78,7 +90,7 @@ class ATBridgeTranslationManager:
             return self._translations[key].get(lang_key, key)
         
         # 如果没有找到翻译，返回原文本
-        return key
+        return translate(key, 'zh_CN' if is_chinese else 'en_US')
     
     def add_translation(self, key: str, en_text: str, zh_text: str):
         """动态添加翻译"""
@@ -95,3 +107,22 @@ def get_text(key: str, context: Optional[bpy.types.Context] = None) -> str:
 def add_translation(key: str, en_text: str, zh_text: str):
     """添加翻译的便捷函数"""
     _translation_manager.add_translation(key, en_text, zh_text)
+
+
+def register():
+    """Blender RNA labels use English source text and its native translation system."""
+    messages = {('*', english): chinese for chinese, english in ENGLISH.items()}
+    for source, values in _translation_manager._translations.items():
+        messages[('*', values['en_US'])] = values['zh']
+    try:
+        bpy.app.translations.unregister(__package__)
+    except ValueError:
+        pass
+    bpy.app.translations.register(__package__, {code: messages for code in ('zh_CN', 'zh_HANS', 'zh_TW', 'zh_HANT')})
+
+
+def unregister():
+    try:
+        bpy.app.translations.unregister(__package__)
+    except ValueError:
+        pass
