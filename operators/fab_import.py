@@ -8,21 +8,26 @@ import bpy
 import os
 import json
 import zipfile
+import tempfile
+import shutil
 
 from ..state.bridge_state import BridgeState
+from ..utils.translation import message_text, get_text
 from ..core.import_manager import ImportManager
 from ..utils.logger import ATBridgeLogger as log
 from ..utils.zip_safety import validate_zip, extract_checked
+from ..utils.fab_files import downloads_directory, read_asset_metadata
 
 
 class ATB_OT_import_zip(bpy.types.Operator):
     """导入 Fab 资产 ZIP 文件"""
     
     bl_idname = "atb.import_zip"
-    bl_label = "Import Fab Asset"
-    bl_description = "选择 Fab 资产 ZIP 文件进行导入"
+    bl_label = "Import Asset ZIP"
+    bl_description = "Choose a Fab asset ZIP to import"
     
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")  # type: ignore
+    filter_glob: bpy.props.StringProperty(default='*.zip', options={'HIDDEN'})
     
     cache_directory: bpy.props.StringProperty(subtype="DIR_PATH", options={'HIDDEN'})
 
@@ -32,73 +37,72 @@ class ATB_OT_import_zip(bpy.types.Operator):
     def execute(self, context):
         """执行操作符"""
         log.info(f"开始导入 Fab 资产: {self.filepath}")
+        from ..ui.fab_panel import record_import
+        before = set(context.scene.objects)
         
         # 验证文件
         if not self.filepath.lower().endswith('.zip'):
-            log.report_error(self, Exception("无效文件"), "请选择 .zip 文件!")
+            log.report_error(self, Exception("无效文件"), get_text("请选择 .zip 文件!"))
+            record_import(self.filepath, False, '请选择 .zip 文件')
             return {'CANCELLED'}
         
+        context.window_manager.progress_begin(0, 3)
+        if context.window:
+            context.window.cursor_set('WAIT')
         try:
+            if not os.path.isfile(self.filepath):
+                raise ValueError('ZIP 文件不存在，请重新选择')
             # 获取解压路径
             fab_path = self._get_fab_assets_path(context)
-            if not fab_path or not os.path.isdir(fab_path):
-                log.report_error(self, Exception("路径未设置"), 
-                               "请在插件首选项中设置有效的 Fab Assets Path")
-                return {'CANCELLED'}
+            os.makedirs(fab_path, exist_ok=True)
             
             # 解压并解析
             asset_data = self._extract_and_parse(fab_path)
+            context.window_manager.progress_update(1)
             if not asset_data:
                 return {'CANCELLED'}
             
             # 导入资产
             manager = ImportManager()
             success = manager.process_dataset(json.dumps([asset_data]))
+            context.window_manager.progress_update(3)
             
             if success:
-                log.report_info(self, f"成功导入 Fab 资产: {asset_data.get('name', 'Unknown')}")
+                added = [obj for obj in context.scene.objects if obj not in before]
+                record_import(self.filepath, True,
+                              '已导入：%s · 新增 %d 个对象' % (asset_data.get('name', '资产'), len(added)), added)
+                log.report_info(self, get_text("成功导入 Fab 资产: ") + asset_data.get("name", "Unknown"))
                 return {'FINISHED'}
             else:
+                record_import(self.filepath, False, '导入未完成，请检查资产格式和 ATBridge 日志后重试。')
                 return {'CANCELLED'}
                 
         except Exception as e:
-            log.report_error(self, e, f"导入失败: {e}")
+            record_import(self.filepath, False, '导入失败：' + str(e))
+            log.report_error(self, e, message_text("导入失败：" + str(e), context))
             return {'CANCELLED'}
+        finally:
+            context.window_manager.progress_end()
+            if context.window:
+                context.window.cursor_set('DEFAULT')
     
     def _extract_and_parse(self, fab_path: str) -> dict:
         """解压并解析 ZIP 文件"""
         with zipfile.ZipFile(self.filepath, 'r') as zip_ref:
             validate_zip(zip_ref)
-            # 查找 JSON 文件
-            json_files = [f for f in zip_ref.namelist() if f.lower().endswith('.json')]
-            if not json_files:
-                log.report_error(self, Exception("无 JSON"), "ZIP 中找不到 .json 文件!")
-                return None
-            
-            # 解析 JSON
-            with zip_ref.open(json_files[0]) as json_file:
-                asset_json = json.load(json_file)
-            
-            asset_id = asset_json.get('id')
-            if not asset_id:
-                log.report_error(self, Exception("无 ID"), "JSON 中找不到 'id' 字段!")
-                return None
-            
-            # 验证文件名
-            zip_filename = os.path.basename(self.filepath)
-            if asset_id not in zip_filename:
-                log.report_error(self, Exception("ID 不匹配"), 
-                               f"ZIP 文件名不包含资产 ID: {asset_id}")
-                return None
-            
-            # 创建目标目录并解压
-            target_dir = os.path.join(fab_path, os.path.splitext(zip_filename)[0])
-            os.makedirs(target_dir, exist_ok=True)
-            extract_checked(zip_ref, target_dir)
+            asset_json = read_asset_metadata(zip_ref)
+            # Each import owns its extraction folder; same-named ZIPs cannot mix files.
+            target_dir = tempfile.mkdtemp(prefix='fab-', dir=fab_path)
+            try:
+                extract_checked(zip_ref, target_dir)
+                asset_data = self._build_bridge_asset(asset_json, target_dir)
+            except Exception:
+                shutil.rmtree(target_dir)
+                raise
             log.info(f"解压完成: {target_dir}")
         
         # 构建 Megascans 兼容数据
-        return self._build_bridge_asset(asset_json, target_dir)
+        return asset_data
     
     def _build_bridge_asset(self, asset_json: dict, target_dir: str) -> dict:
         """构建 Megascans 兼容的资产数据结构"""
@@ -159,8 +163,6 @@ class ATB_OT_import_zip(bpy.types.Operator):
                 mesh_format = 'fbx'
             elif uri_lower.endswith('.obj'):
                 mesh_format = 'obj'
-            elif uri_lower.endswith('.abc'):
-                mesh_format = 'abc'
             else:
                 continue
             
@@ -174,7 +176,7 @@ class ATB_OT_import_zip(bpy.types.Operator):
                 })
         
         if asset_json.get('models') and not mesh_list:
-            raise ValueError('No unambiguous supported model found in ZIP')
+            raise ValueError('没有找到可明确匹配的 FBX / OBJ 模型；请下载对应格式的单一精度资产包')
 
         # 安全获取资产名称
         asset_name = (asset_json.get('name') or 
@@ -235,23 +237,22 @@ class ATB_OT_import_zip(bpy.types.Operator):
     def _get_fab_assets_path(self, context) -> str:
         """获取 Fab 资产路径"""
         if self.cache_directory:
-            return self.cache_directory
+            return bpy.path.abspath(self.cache_directory)
         try:
             from ..preferences import get_addon_preferences
             prefs = get_addon_preferences(context)
-            if prefs:
-                return prefs.fab_assets_path
+            if prefs and prefs.fab_assets_path:
+                return bpy.path.abspath(prefs.fab_assets_path)
         except Exception:
             pass
-        return ''
+        return bpy.utils.user_resource('DATAFILES', path='ATBridge/assets', create=True)
     
     def invoke(self, context, event):
         """调用操作符"""
-        fab_path = self._get_fab_assets_path(context)
-        if not fab_path or not os.path.isdir(fab_path):
-            log.report_error(self, Exception("路径未设置"),
-                           "请先在插件首选项中设置 Fab Assets Path")
-            return {'CANCELLED'}
-        
+        if not self.filepath:
+            from ..preferences import get_addon_preferences
+            prefs = get_addon_preferences(context)
+            folder = bpy.path.abspath(prefs.fab_downloads_path) if prefs else str(downloads_directory())
+            self.filepath = os.path.join(folder, '')
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}

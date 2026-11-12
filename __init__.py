@@ -26,7 +26,7 @@ from . import preferences
 from . import properties
 from . import tools
 from . import ui
-from .companion import blender_ui as companion_ui
+from .utils import translation
 from .operators.alembic_import import MS_Init_Abc
 
 
@@ -44,13 +44,9 @@ def menu_func_import(self, context):
     self.layout.operator(MS_Init_Abc.bl_idname, text="Megascans: Import Alembic")
 
 
-def import_zip_button(self, context):
-    """3D 视图头部添加导入按钮"""
-    self.layout.operator("atb.import_zip", text="Import Fab Asset", icon='IMPORT')
-
-
 def register():
     """注册插件"""
+    translation.register()
     # 1. 先注册属性组（其他模块可能依赖它）
     properties.register()
     
@@ -63,7 +59,6 @@ def register():
     
     # 4. 注册 UI 面板
     ui.register()
-    companion_ui.register()
     
     # 5. 注册事件处理
     if load_plugin not in bpy.app.handlers.load_post:
@@ -71,7 +66,6 @@ def register():
     
     # 6. 注册菜单
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
-    bpy.types.VIEW3D_HT_header.append(import_zip_button)
     
     print(f"[ATBridge] v{'.'.join(map(str, bl_info['version']))} 已加载")
 
@@ -80,7 +74,6 @@ def unregister():
     """注销插件"""
     # 移除菜单
     try:
-        bpy.types.VIEW3D_HT_header.remove(import_zip_button)
         bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     except Exception:
         pass
@@ -93,12 +86,12 @@ def unregister():
         pass
     
     # 注销子模块（逆序）
-    companion_ui.unregister()
     ui.unregister()
     preferences.unregister()
     tools.unregister()
     operators.unregister()
     properties.unregister()
+    translation.unregister()
     
     print("[ATBridge] 已卸载")
 

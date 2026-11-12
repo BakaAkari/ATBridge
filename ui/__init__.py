@@ -9,6 +9,7 @@ from . import (
     tools_panel,
     node_panel,
     ui_callbacks,
+    fab_panel,
 )
 
 
@@ -17,10 +18,12 @@ def register():
     tools_panel.register()
     node_panel.register()
     ui_callbacks.register()
+    fab_panel.register()
 
 
 def unregister():
     """注销所有 UI 面板"""
+    fab_panel.unregister()
     ui_callbacks.unregister()
     node_panel.unregister()
     tools_panel.unregister()

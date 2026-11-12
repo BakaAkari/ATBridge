@@ -35,6 +35,7 @@ class ATB_PT_ToolsPanel(Panel):
     bl_region_type = 'UI'
     bl_category = UIConstants.PANEL_CATEGORY
     bl_order = UIConstants.PANEL_ORDER_TOOLS
+    bl_options = {'DEFAULT_CLOSED'}
     
     def draw(self, context):
         layout = self.layout
