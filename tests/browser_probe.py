@@ -5,6 +5,7 @@ No Fab account, external website, browser extension, or Blender is involved.
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -16,6 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD_ROOT = ROOT / 'dist' / 'fab-browser'
 MARKER = BUILD_ROOT / 'current.txt'
 EXECUTABLE = BUILD_ROOT / MARKER.read_text().strip() / 'ATBridge.FabBrowser.exe' if MARKER.is_file() else BUILD_ROOT / 'ATBridge.FabBrowser.exe'
+# Test a packaged build instead: ATB_BROWSER_EXE=<add-on>/bin/fab-browser/ATBridge.FabBrowser.exe
+if os.environ.get('ATB_BROWSER_EXE'):
+    EXECUTABLE = Path(os.environ['ATB_BROWSER_EXE'])
 
 
 def main():
