@@ -32,6 +32,7 @@ def describe_zip(path, preview_directory=None):
             detail = kind + (' · ' + ' / '.join(shipped) if shipped else '')
             if resolutions:
                 detail += ' · ' + '/'.join(resolutions).upper()
+            quality_hint = _quality_hint(Path(path).stem, _asset_kind(data) in ('3d', '3dplant'), resolutions)
             preview, preview_label = '', '资产包未包含模型缩略图'
             if preview_directory:
                 previews = data.get('previews', {})
@@ -59,9 +60,21 @@ def describe_zip(path, preview_directory=None):
                 elif uris:
                     preview_label = '元数据包含预览引用，但包内缺少可用缩略图'
             return {'title': title, 'detail': detail, 'error': '', 'asset_id': data['id'],
-                    'preview': preview, 'preview_label': preview_label}
+                    'preview': preview, 'preview_label': preview_label, 'quality_hint': quality_hint}
     except Exception as error:
         return {'title': Path(path).stem, 'detail': '无法识别', 'error': str(error), 'asset_id': ''}
+
+
+def _quality_hint(stem, has_model, resolutions):
+    """Fab's Low/Medium model tiers and 1K/2K texture packs look soft in close-up renders."""
+    if has_model:
+        tier = next((t for t in ('low', 'medium') if re.search(r'(?i)(?:^|_)%s(?:_|$)' % t, stem)), None)
+        if tier:
+            return '这是 %s 品质下载，模型已精简、贴图分辨率较低；渲染建议在 Fab 改下 High 或 Raw' % tier.capitalize()
+        return ''
+    if resolutions and int(resolutions[-1][:-1]) <= 2:
+        return '贴图最高只有 %s，近景渲染建议在 Fab 改下 4K 或 8K' % resolutions[-1].upper()
+    return ''
 
 
 _KIND_LABELS = {'3d': '3D 资产', '3dplant': '植物', 'surface': '表面材质', 'decal': '贴花',

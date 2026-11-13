@@ -117,6 +117,42 @@ class FabFilesTest(unittest.TestCase):
             self.assertEqual(result['error'], '')
             self.assertEqual(result['detail'], '植物 · GLTF · 1K')
 
+    def test_describe_zip_quality_hint(self):
+        cases = [('rock_low.zip', 'rock.fbx', '1K', 'Low 品质'),
+                 ('rock_medium.zip', 'rock.fbx', '2K', 'Medium 品质'),
+                 ('rock_high.zip', 'rock.fbx', '1K', ''),
+                 ('rock_raw.zip', 'rock.fbx', '8K', ''),
+                 ('rock_1k.zip', None, '1K', '只有 1K'),
+                 ('rock_2k.zip', None, '2K', '只有 2K'),
+                 ('rock_4k.zip', None, '4K', '')]
+        for name, model, res, expected in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / name
+                with zipfile.ZipFile(path, 'w') as archive:
+                    archive.writestr('rock.json', json.dumps({
+                        'id': 'rock01', 'semanticTags': {'asset_type': '3D asset' if model else 'surface'},
+                        'models': [{'uri': 'rock.fbx'}] if model else [],
+                        'maps': [{'uri': f'rock_{res}_Albedo.jpg'}]}))
+                    if model:
+                        archive.writestr(model, b'fbx')
+                    archive.writestr(f'rock_{res}_Albedo.jpg', b'jpg')
+                hint = fab_files.describe_zip(path)['quality_hint']
+                if expected:
+                    self.assertIn(expected, hint)
+                else:
+                    self.assertEqual(hint, '')
+
+    def test_quality_hints_have_english_text(self):
+        spec = importlib.util.spec_from_file_location('atbridge_hint_locale', utils_dir / 'localization.py')
+        locale = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(locale)
+        translate_message = locale.translate_message
+        for message in ('这是 Low 品质下载，模型已精简、贴图分辨率较低；渲染建议在 Fab 改下 High 或 Raw',
+                        '贴图最高只有 1K，近景渲染建议在 Fab 改下 4K 或 8K'):
+            english = translate_message(message, 'en_US')
+            self.assertNotEqual(english, message)
+            self.assertTrue('Low' in english or '1K' in english)
+
     def test_describe_zip_falls_back_to_humanized_zip_filename(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'Weathered_Rock_1K.zip'

@@ -5,7 +5,7 @@ import json
 import os
 import subprocess
 import sys
-import textwrap
+import re
 import webbrowser
 import tempfile
 import shutil
@@ -105,6 +105,7 @@ def _apply(state, rows):
         item.path, item.key = path, key
         item.title, item.detail, item.error = info['title'], info['detail'], info['error']
         item.preview_label = info.get('preview_label', '')
+        item.quality_hint = info.get('quality_hint', '')
         if _previews is not None and info.get('preview'):
             try:
                 preview_key = info.get('preview_token', key)
@@ -203,6 +204,36 @@ class ATB_FabLocalFile(bpy.types.PropertyGroup):
     size_label: bpy.props.StringProperty()
     preview_icon: bpy.props.IntProperty()
     preview_label: bpy.props.StringProperty()
+    quality_hint: bpy.props.StringProperty()
+
+
+def wrap_display(text, width):
+    """Wrap by display width: CJK characters take two columns, so Chinese lines are not elided."""
+    wide = lambda c: '\u2e80' <= c <= '\uffef'
+    out = []
+    for paragraph in text.splitlines():
+        line, used = '', 0
+        # Tokens: one CJK character, a run of other non-space characters, or spaces.
+        for token in re.findall(r'[\u2e80-\uffef]|[^\s\u2e80-\uffef]+|\s+', paragraph):
+            if token.isspace():
+                if line:
+                    line, used = line + ' ', used + 1
+                continue
+            while token:
+                cost = sum(2 if wide(c) else 1 for c in token)
+                if used + cost <= width:
+                    line, used, token = line + token, used + cost, ''
+                elif line.strip():
+                    out.append(line.rstrip())
+                    line, used = '', 0
+                else:
+                    # A single word wider than the line (a long path): split it.
+                    line, token = token[:width], token[width:]
+                    out.append(line)
+                    line = ''
+        if line.strip():
+            out.append(line.rstrip())
+    return out
 
 
 class ATB_FabLocalState(bpy.types.PropertyGroup):
@@ -328,9 +359,11 @@ class ATB_PT_fab_local(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         state = context.window_manager.atb_fab_local
-        width = max(18, int(context.region.width / 8))
+        # Columns that fit the sidebar: about 7 px per Latin character at UI scale 1, minus panel padding.
+        width = max(18, int((context.region.width - 40 * context.preferences.system.ui_scale)
+                            / (7 * context.preferences.system.ui_scale)))
         def lines(parent, text):
-            for line in textwrap.wrap(text, width=width, break_long_words=True):
+            for line in wrap_display(text, width):
                 parent.label(text=line, translate=False)
         def button(parent, action, text, icon='NONE'):
             parent.operator('atb.fab_local', text=text, icon=icon, translate=False).action = action
@@ -376,6 +409,10 @@ class ATB_PT_fab_local(bpy.types.Panel):
                     lines(box, message_text(item.error, context))
                     lines(box, tr('请在 Fab 选择含 Megascans 元数据的模型或材质 ZIP。'))
                 else:
+                    if item.quality_hint:
+                        hint = box.column(align=True)
+                        hint.label(text=tr('下载品质提示'), icon='INFO')
+                        lines(hint, message_text(item.quality_hint, context))
                     if item.last_error:
                         lines(box, message_text(item.last_error, context))
                     box.label(text=tr('曾导入过 · 再次导入会创建副本') if item.imported else tr('元数据已识别 · 可尝试导入'),

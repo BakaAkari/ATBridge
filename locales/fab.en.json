@@ -153,5 +153,15 @@
   "新代码注册失败，已恢复先前版本；修复代码后可再次重载。\n": "New code registration failed. The previous version was restored. Fix the code and retry.\n",
   "ATBridge 重载插件": "ATBridge Reload Add-on",
   "正在重载 ATBridge…": "Reloading ATBridge…",
-  "重新加载当前源码，不新建 Blender，不修改场景；运行中的原生浏览器保持不变": "Reload source in this Blender session without changing the scene. An open native browser keeps its current version."
+  "重新加载当前源码，不新建 Blender，不修改场景；运行中的原生浏览器保持不变": "Reload source in this Blender session without changing the scene. An open native browser keeps its current version.",
+  "下载品质提示": "Download quality",
+  "这是 %s 品质下载，模型已精简、贴图分辨率较低；渲染建议在 Fab 改下 High 或 Raw": "This is a %s quality download: the model is simplified and textures are low resolution. For renders, download High or Raw from Fab instead",
+  "贴图最高只有 %s，近景渲染建议在 Fab 改下 4K 或 8K": "Textures only go up to %s. For close-up renders, download 4K or 8K from Fab instead",
+  "3D 资产": "3D asset",
+  "植物": "Plant",
+  "表面材质": "Surface",
+  "贴花": "Decal",
+  "图集": "Atlas",
+  "瑕疵贴图": "Imperfection",
+  "笔刷": "Brush"
 }
