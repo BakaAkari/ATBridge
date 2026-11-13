@@ -28,6 +28,9 @@ _HEIGHT = {
     'NodeReroute': 20,
     'ShaderNodeBsdfPrincipled': 660,
     'ShaderNodeOutputMaterial': 120,
+    'ShaderNodeMixShader': 140,
+    'ShaderNodeBsdfTranslucent': 150,
+    'ShaderNodeBsdfTransparent': 90,
 }
 COLUMN_GAP = 80
 ROW_GAP = 30
@@ -110,7 +113,7 @@ CHANNEL_COLORS = {
 
 def layout_material(tree, bsdf, output, channels: List[Dict], mapping: Optional[List] = None,
                     labels: Optional[Dict[str, str]] = None, move_shader: bool = True,
-                    move_output: bool = True) -> None:
+                    move_output: bool = True, post_columns: Optional[List[List]] = None) -> None:
     """
     channels: ordered list of {'key', 'textures': [nodes], 'converters': [nodes], 'to_output': bool}
     mapping:  nodes of the UV mapping setup (tex coord, value, mapping, reroute), left-most column.
@@ -126,8 +129,28 @@ def layout_material(tree, bsdf, output, channels: List[Dict], mapping: Optional[
         _place(bsdf, bsdf_x, top)
     else:
         bsdf_x, top = absolute_location(bsdf)
+    # Shader nodes between the BSDF and the output (translucency mix, opacity cut-out). Nodes ATBridge
+    # does not own (a user's output, their own mixes) keep their place, so new nodes step around them.
+    managed = {n.as_pointer() for c in post_columns or [] for n in c} | {
+        n.as_pointer() for c in channels for n in c['textures'] + c['converters']}
+    blockers = [node_rect(n) for n in tree.nodes if n.bl_idname != 'NodeFrame' and n.as_pointer() not in managed
+                and FRAME_TAG not in n and not (n == bsdf and move_shader) and not (n == output and move_output)]
+    x = bsdf_x + bsdf.width + COLUMN_GAP
+    for column in post_columns or []:
+        y = top
+        for node in column:
+            while True:
+                rect = (x, y, x + node_width(node), y - node_height(node))
+                hit = next((b for b in blockers if not (rect[2] <= b[0] or b[2] <= rect[0] or rect[3] >= b[1] or b[3] >= rect[1])), None)
+                if hit is None:
+                    break
+                y = hit[3] - ROW_GAP
+            _place(node, x, y)
+            blockers.append(node_rect(node))
+            y -= node_height(node) + ROW_GAP
+        x += max(n.width for n in column) + COLUMN_GAP
     if move_output:
-        _place(output, bsdf_x + bsdf.width + COLUMN_GAP, top)
+        _place(output, x, top)
     conv_x = bsdf_x - COLUMN_GAP - conv_w
     tex_x = conv_x - COLUMN_GAP - tex_w
 

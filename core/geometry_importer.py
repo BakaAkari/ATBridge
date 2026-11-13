@@ -95,6 +95,26 @@ class GeometryImporter:
             return []
     
     @classmethod
+    def import_gltf(cls, filepath: str) -> List[bpy.types.Object]:
+        """
+        导入 glTF 文件（保留其自带材质）
+
+        Args:
+            filepath: .gltf / .glb 文件路径
+
+        Returns:
+            导入的对象列表
+        """
+        try:
+            bpy.ops.import_scene.gltf(filepath=filepath)
+            selected = cls._get_selected_objects()
+            log.debug(f"glTF 导入成功: {filepath} ({len(selected)} 个对象)")
+            return selected
+        except Exception as e:
+            log.error(f"glTF 导入失败: {filepath}", e)
+            return []
+
+    @classmethod
     def import_alembic(cls, filepath: str) -> List[bpy.types.Object]:
         """
         导入 Alembic 文件

@@ -62,6 +62,9 @@ class ATBridgeTranslationManager:
             "Transmission": {"en_US": "Transmission", "zh": "透射"},
             "Normal": {"en_US": "Normal", "zh": "法线"},
             "Displacement": {"en_US": "Displacement", "zh": "置换"},
+            "Translucency": {"en_US": "Translucency", "zh": "半透明"},
+            "Sheen": {"en_US": "Sheen", "zh": "光泽层"},
+            "Mask": {"en_US": "Mask", "zh": "遮罩"},
 
             # 属性标签
             "Fab Assets Path": {"en_US": "Fab Assets Path", "zh": "Fab资产路径"},

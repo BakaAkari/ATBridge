@@ -17,6 +17,7 @@ from ..core.import_manager import ImportManager
 from ..utils.logger import ATBridgeLogger as log
 from ..utils.zip_safety import validate_zip, extract_checked
 from ..utils.fab_files import downloads_directory, read_asset_metadata
+from ..core.fab_package import analyse
 
 
 class ATB_OT_import_zip(bpy.types.Operator):
@@ -31,9 +32,6 @@ class ATB_OT_import_zip(bpy.types.Operator):
     
     cache_directory: bpy.props.StringProperty(subtype="DIR_PATH", options={'HIDDEN'})
 
-    # 贴图类型标准化映射
-    BASECOLOR_NAMES = ["basecolor", "albedo", "diffuse", "col", "color"]
-    
     def execute(self, context):
         """执行操作符"""
         log.info(f"开始导入 Fab 资产: {self.filepath}")
@@ -105,135 +103,35 @@ class ATB_OT_import_zip(bpy.types.Operator):
         return asset_data
     
     def _build_bridge_asset(self, asset_json: dict, target_dir: str) -> dict:
-        """构建 Megascans 兼容的资产数据结构"""
-        asset_id = asset_json['id']
-        
-        # 收集所有文件
-        all_files = []
-        for root, dirs, files in os.walk(target_dir):
-            for file in files:
-                all_files.append(os.path.join(root, file))
-        
-        # 解析贴图
-        components = []
-        seen_components = set()
-        for m in asset_json.get('maps', []):
-            if 'uri' not in m:
-                continue
-            
-            # 智能查找文件
-            map_name = m.get('name', m.get('type', 'unknown'))
-            found_path = self._smart_find_file(all_files, asset_id, map_name)
-            if not found_path:
-                continue
-            
-            # 标准化类型
-            map_type = m.get('type', map_name).lower()
-            if map_type in self.BASECOLOR_NAMES:
-                map_type = 'albedo'
-            
-            # 确定格式
-            if 'format' in m:
-                fmt = m['format']
-            elif 'mimeType' in m:
-                fmt = m['mimeType'].split('/')[-1]
-            else:
-                ext = os.path.splitext(m['uri'])[1].lower()
-                fmt = ext[1:] if ext.startswith('.') else ext
-            
-            component_key = (map_type, os.path.realpath(found_path))
-            if component_key in seen_components:
-                continue
-            seen_components.add(component_key)
-            components.append({
-                'type': map_type,
-                'format': fmt,
-                'path': found_path,
-            })
-        
-        # 解析模型
-        mesh_list = []
-        seen_meshes = set()
-        for m in asset_json.get('models', []):
-            if 'uri' not in m:
-                continue
-            
-            uri_lower = m['uri'].lower()
-            if uri_lower.endswith('.fbx'):
-                mesh_format = 'fbx'
-            elif uri_lower.endswith('.obj'):
-                mesh_format = 'obj'
-            else:
-                continue
-            
-            found_path = self._smart_find_model(all_files, asset_id, mesh_format, m['uri'])
-            mesh_key = os.path.realpath(found_path) if found_path else None
-            if found_path and mesh_key not in seen_meshes:
-                seen_meshes.add(mesh_key)
-                mesh_list.append({
-                    'format': mesh_format,
-                    'path': found_path,
-                })
-        
-        if asset_json.get('models') and not mesh_list:
-            raise ValueError('没有找到可明确匹配的 FBX / OBJ 模型；请下载对应格式的单一精度资产包')
-
-        # 安全获取资产名称
-        asset_name = (asset_json.get('name') or 
-                     asset_json.get('displayName') or 
-                     asset_json.get('title') or 
-                     asset_id)
-        
-        # 构建最终数据
+        """Analyse the extracted package and build the import description."""
+        all_files = [os.path.join(root, f) for root, _, files in os.walk(target_dir) for f in files]
+        pkg = analyse(asset_json, all_files)
+        if pkg.package_format == 'unsupported':
+            raise ValueError('模型格式不支持或缺失，请下载 FBX、OBJ 或 glTF 资产包')
+        if pkg.package_format in ('fbx', 'obj') and not (pkg.models or pkg.variants):
+            raise ValueError('没有找到可导入的模型文件')
+        if pkg.package_format == 'textures' and not pkg.textures:
+            raise ValueError('资产包中没有可识别的贴图')
+        mesh_list = [{'format': pkg.package_format, 'path': p} for p in pkg.models]
         return {
-            'type': asset_json.get('categories', ['3d'])[0].lower(),
-            'id': asset_id,
-            'name': asset_name,
-            'components': components,
+            'type': pkg.kind,
+            'id': pkg.asset_id,
+            'name': pkg.name,
+            'components': [{'type': t, 'format': os.path.splitext(p)[1][1:].lower(), 'path': p}
+                           for t, p in pkg.textures.items()],
             'meshList': mesh_list,
-            'categories': asset_json.get('categories', ['3d']),
+            'variants': [{'name': v.name, 'lods': {str(k): p for k, p in v.lods.items()}} for v in pkg.variants],
+            'gltf': pkg.gltf,
+            'physicalSize': list(pkg.physical_size) if pkg.physical_size else None,
+            'displacementHeight': pkg.displacement_height,
+            'resolution': pkg.resolution,
+            'categories': asset_json.get('categories', []),
             'tags': asset_json.get('tags', []),
             'category': asset_json.get('category', ''),
-            'activeLOD': asset_json.get('activeLOD', ''),
-            'minLOD': asset_json.get('minLOD', ''),
             'pbrWorkflow': asset_json.get('pbrWorkflow', 'metalness'),
             'applyToSelection': True,
         }
-    
-    def _smart_find_file(self, all_files: list, asset_id: str, map_name: str) -> str:
-        """智能查找贴图文件"""
-        asset_id_lower = asset_id.lower()
-        map_name_lower = map_name.lower()
-        
-        candidates = []
-        for f in all_files:
-            fname = os.path.basename(f).lower()
-            if asset_id_lower in fname and map_name_lower in fname:
-                candidates.append(f)
-        
-        return sorted(candidates, key=len)[0] if candidates else None
-    
-    def _smart_find_model(self, all_files: list, asset_id: str, mesh_format: str, uri: str = "") -> str:
-        """智能查找模型文件"""
-        asset_id_lower = asset_id.lower()
-        ext = '.' + mesh_format.lower()
-        
-        candidates = []
-        for f in all_files:
-            fname = os.path.basename(f).lower()
-            if asset_id_lower in fname and fname.endswith(ext):
-                candidates.append(f)
-        
-        exact = [f for f in candidates if f.replace(os.sep, '/').endswith('/' + uri)]
-        if len(exact) == 1:
-            return exact[0]
-        named = [f for f in candidates if os.path.basename(f).lower() == os.path.basename(uri).lower()]
-        if len(named) == 1:
-            return named[0]
-        if len(candidates) > 1:
-            raise ValueError('Multiple models match metadata; select a single-quality package')
-        return candidates[0] if candidates else None
-    
+
     def _get_fab_assets_path(self, context) -> str:
         """获取 Fab 资产路径"""
         if self.cache_directory:

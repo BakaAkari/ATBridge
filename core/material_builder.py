@@ -19,16 +19,18 @@ from ..utils.logger import ATBridgeLogger as log
 from ..utils.translation import get_text
 
 # Channel order follows the Principled BSDF input order, top to bottom.
-CHANNEL_ORDER = ['color', 'metallic', 'roughness', 'opacity', 'transmission', 'normal', 'displacement']
+CHANNEL_ORDER = ['color', 'metallic', 'roughness', 'opacity', 'transmission', 'translucency', 'sheen',
+                 'normal', 'displacement', 'mask']
 CHANNEL_LABELS = {
     'mapping': 'UV Mapping', 'color': 'Base Color', 'metallic': 'Metallic', 'roughness': 'Roughness',
     'opacity': 'Opacity', 'transmission': 'Transmission', 'normal': 'Normal', 'displacement': 'Displacement',
+    'translucency': 'Translucency', 'sheen': 'Sheen', 'mask': 'Mask',
 }
 # Node labels shown on image nodes instead of long file names.
 TEXTURE_LABELS = {
     'albedo': 'Base Color', 'ao': 'Ambient Occlusion', 'metalness': 'Metallic', 'roughness': 'Roughness',
     'gloss': 'Gloss', 'opacity': 'Opacity', 'transmission': 'Transmission', 'normal': 'Normal',
-    'bump': 'Bump', 'displacement': 'Displacement',
+    'bump': 'Bump', 'displacement': 'Displacement', 'translucency': 'Translucency', 'fuzz': 'Fuzz', 'mask': 'Mask',
 }
 
 
@@ -53,6 +55,8 @@ class MaterialBuilder:
         self.tex_count = 0
         self.owns_shader = True
         self.owns_output = True
+        self.post_columns: List[List[bpy.types.Node]] = []
+        self.stack_output = None
 
     def build(self) -> bpy.types.Material:
         """
@@ -204,12 +208,22 @@ class MaterialBuilder:
         original = {n.as_pointer(): name for n, name in (snapshot['names'] if snapshot else [])}
         new_by_role = {n[ROLE_TAG]: n for n in tree.nodes if ROLE_TAG in n and n.as_pointer() not in old_ptrs}
         keep = []
+        old_shader = [n for n in previous if n.get(FRAME_TAG) == 'shader']
+        old_finals = [n for n in old_shader
+                      if not any(l.to_node in old_shader for s in n.outputs for l in s.links)]
         for old in previous:
             new = new_by_role.get(old.get(ROLE_TAG))
             for socket in old.outputs:
                 for link in list(socket.links):
                     if link.to_node.as_pointer() in old_ptrs:
                         continue  # wiring between old ATBridge nodes is rebuilt, not copied
+                    if old.get(FRAME_TAG) == 'shader' and old in old_finals:
+                        # What the old stack's last node fed now takes this build's final shader output: the
+                        # new stack's last node, or the Principled BSDF when the asset has no stack any more.
+                        # Intermediate stack nodes migrate by role like any other node.
+                        final = getattr(self, 'stack_output', None) or self.bsdf_node.outputs['BSDF']
+                        tree.links.new(final, link.to_socket).is_muted = link.is_muted
+                        continue
                     match = next((s for s in new.outputs if s.identifier == socket.identifier), None) if new else None
                     if match is None:
                         if old not in keep:
@@ -253,7 +267,8 @@ class MaterialBuilder:
         labels = {key: get_text(text) for key, text in CHANNEL_LABELS.items()}
         layout_material(self.mat.node_tree, self.bsdf_node, self.output_node, channels,
                         self.mapping_nodes or None, labels,
-                        move_shader=self.owns_shader, move_output=self.owns_output)
+                        move_shader=self.owns_shader, move_output=self.owns_output,
+                        post_columns=self.post_columns)
 
     # ------------------------------------------------------------------ channels
 
@@ -283,13 +298,30 @@ class MaterialBuilder:
             self._setup_gloss()
 
         if self.asset.has_texture('opacity'):
-            self._create_connected_texture('opacity', 'opacity', 'Alpha',
-                                           BridgeConfig.COLORSPACE_NON_COLOR)
+            self._setup_opacity()
             self.mat.blend_method = BlenderCompat.get_blend_method_hashed()
+            if hasattr(self.mat, 'surface_render_method'):   # EEVEE Next (4.2+)
+                self.mat.surface_render_method = 'DITHERED'
 
         if self.asset.has_texture('transmission'):
             self._create_connected_texture('transmission', 'transmission', 'Transmission Weight',
                                            BridgeConfig.COLORSPACE_NON_COLOR)
+
+        if self.asset.has_texture('translucency'):
+            self._setup_translucency()
+
+        if self.asset.has_texture('fuzz'):
+            # Fabric fuzz drives the sheen layer.
+            self._create_connected_texture('fuzz', 'sheen', 'Sheen Weight',
+                                           BridgeConfig.COLORSPACE_NON_COLOR)
+
+        if self.asset.has_texture('mask'):
+            # Imperfection masks are for layering; keep the map ready but unconnected.
+            node = self._register('mask', self._create_texture_node('mask', BridgeConfig.COLORSPACE_NON_COLOR),
+                                  role='tex:mask')
+            if node:
+                node.name = 'Mask Tex Node'
+                self.tex_count += 1
 
         if self.asset.has_texture('normal'):
             self._setup_normal()
@@ -298,6 +330,8 @@ class MaterialBuilder:
 
         if self.asset.has_texture('displacement'):
             self._setup_displacement()
+
+        self._setup_shader_stack()
 
     def _setup_albedo_ao(self) -> None:
         """设置 Albedo (+ AO 混合)"""
@@ -316,6 +350,76 @@ class MaterialBuilder:
             self.tex_count += 1
         else:
             self._connect_to_bsdf(color_node.outputs['Color'], 'Base Color')
+
+    def _setup_opacity(self) -> None:
+        """Opacity masks may live in the red channel only (plant atlases ship red-on-black),
+        so read R instead of letting Blender convert the color by luminance (~21% for pure red)."""
+        tex = self._register('opacity', self._create_texture_node('opacity', BridgeConfig.COLORSPACE_NON_COLOR),
+                             role='tex:opacity')
+        tex.name = 'Opacity Tex Node'
+        sep = self._register('opacity', self.factory.create_separate_color_node((0, 0)), converter=True,
+                             role='opacity_red')
+        sep.label = 'Opacity (R)'
+        self.factory.link(tex.outputs['Color'], sep.inputs[0])
+        self._connect_to_bsdf(sep.outputs[0], 'Alpha')
+        self.tex_count += 1
+
+    def _setup_translucency(self) -> None:
+        """Foliage: the translucency map is the color of light passing through the leaf."""
+        tex = self._register('translucency', self._create_texture_node('translucency', BridgeConfig.COLORSPACE_SRGB),
+                             role='tex:translucency')
+        tex.name = 'Translucency Tex Node'
+        bsdf = self._register('translucency', self.factory.create_node('ShaderNodeBsdfTranslucent', (0, 0)),
+                              converter=True, role='translucent_bsdf')
+        amount = self._register('translucency', self.factory.create_value_node((0, 0), 0.4, 'Translucency Amount'),
+                                converter=True, role='translucency_amount')
+        amount.label = 'Translucency Amount'
+        self.factory.link(tex.outputs['Color'], bsdf.inputs['Color'])
+        self.translucent_bsdf, self.translucency_amount = bsdf, amount
+        self.tex_count += 1
+
+    def _setup_shader_stack(self) -> None:
+        """Principled → (mix with Translucent) → (cut out by opacity) → Output, when the asset needs it."""
+        if not getattr(self, 'translucent_bsdf', None):
+            return
+        tree = self.mat.node_tree
+
+        def shader_node(kind, role):
+            node = self.factory.create_node(kind, (0, 0))
+            node[FRAME_TAG] = 'shader'
+            node[ROLE_TAG] = role
+            return node
+
+        # Where the shader's output goes now (the Output, or a user's own mix/add chain);
+        # ATBridge's previous stack nodes are excluded — their downstream links are migrated.
+        targets = [(l.to_socket, l.is_muted) for l in self.bsdf_node.outputs['BSDF'].links if FRAME_TAG not in l.to_node]
+        mix = shader_node('ShaderNodeMixShader', 'mix_translucency')
+        mix.label = 'Translucency'
+        self.factory.link(self.translucency_amount.outputs[0], mix.inputs['Fac'])
+        self.factory.link(self.bsdf_node.outputs['BSDF'], mix.inputs[1])
+        self.factory.link(self.translucent_bsdf.outputs['BSDF'], mix.inputs[2])
+        self.post_columns = [[mix]]
+        result = mix
+        opacity = next((n for n in self.channels.get('opacity', {}).get('converters', [])
+                        if n.get(ROLE_TAG) == 'opacity_red'), None)
+        if opacity is not None:
+            # The Translucent BSDF ignores Principled alpha, so the cut-out moves to the shader level.
+            alpha = self.bsdf_node.inputs[BlenderCompat.get_bsdf_input_name('Alpha')]
+            for link in list(alpha.links):
+                tree.links.remove(link)
+            transparent = shader_node('ShaderNodeBsdfTransparent', 'transparent_bsdf')
+            cut = shader_node('ShaderNodeMixShader', 'mix_cutout')
+            cut.label = 'Opacity Cut-out'
+            self.factory.link(opacity.outputs[0], cut.inputs['Fac'])
+            self.factory.link(transparent.outputs['BSDF'], cut.inputs[1])
+            self.factory.link(mix.outputs['Shader'], cut.inputs[2])
+            self.post_columns = [[mix, transparent], [cut]]
+            result = cut
+        self.stack_output = result.outputs['Shader']
+        for socket, muted in targets:
+            self.mat.node_tree.links.new(self.stack_output, socket).is_muted = muted   # replaces the shader's own link
+        if not targets and not self.output_node.inputs['Surface'].is_linked:
+            self.factory.link(result.outputs['Shader'], self.output_node.inputs['Surface'])
 
     def _setup_gloss(self) -> None:
         """设置 Gloss 贴图（反转为 Roughness）"""
@@ -351,7 +455,8 @@ class MaterialBuilder:
         tex_node.name = "Displacement Tex Node"
         sep_node = self._register('displacement', self.factory.create_separate_color_node((0, 0)), converter=True, role='disp_separate')
         strength_node = self._register('displacement', self.factory.create_value_node(
-            (0, 0), BridgeConfig.DISPLACEMENT_SCALE, 'Bump Strength'), converter=True, role='disp_scale')
+            (0, 0), self.asset.displacement_height or BridgeConfig.DISPLACEMENT_SCALE, 'Bump Strength'),
+            converter=True, role='disp_scale')
         strength_node.label = 'Displacement Scale'
         disp_node = self._register('displacement', self.factory.create_displacement_node((0, 0)), converter=True, role='displacement')
         self.factory.link(tex_node.outputs['Color'], sep_node.inputs[0])

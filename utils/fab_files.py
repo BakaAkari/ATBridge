@@ -15,17 +15,21 @@ def describe_zip(path, preview_directory=None):
             validate_zip(archive)
             data = read_asset_metadata(archive)
             models = data.get('models', [])
-            if models and not any(m.get('uri', '').lower().endswith(('.fbx', '.obj')) for m in models):
-                raise ValueError('模型格式不支持，请下载 FBX / OBJ 资产包')
+            names = [n.lower() for n in archive.namelist()]
+            # The metadata always lists the FBX/ZTL sources; the archive shows what was downloaded.
+            shipped = sorted({ext.upper() for ext in ('fbx', 'obj', 'gltf') if any(n.endswith('.' + ext) for n in names)})
+            if not shipped and any(n.endswith(('.abc', '.usd', '.usdz', '.blend')) for n in names):
+                raise ValueError('模型格式不支持，请下载 FBX、OBJ 或 glTF 资产包')
             title = next((data.get(k) for k in ('name', 'displayName', 'title')
                           if isinstance(data.get(k), str) and data[k].strip()), '')
             if not title:
                 title = re.sub(re.escape(data['id']), '', Path(path).stem, flags=re.I)
                 title = re.sub(r'(?i)(?:_|\s)(?:low|medium|high|raw|\d+k)(?=_|\s|$)', '', title)
                 title = re.sub(r'[_\s]+', ' ', title).strip() or data['id']
-            formats = sorted({Path(m['uri']).suffix[1:].upper() for m in models if m.get('uri')})
-            resolutions = sorted(set(re.findall(r'(?i)(?:_|/)(\d{1,2}K)(?:_|\.)', ' '.join(archive.namelist()))))
-            detail = ' / '.join(formats) if formats else '材质资产'
+            resolutions = sorted(set(re.findall(r'(?i)(?:_|/)(\d{1,2}K)(?:_|\.)', ' '.join(archive.namelist()))),
+                                 key=lambda r: int(r[:-1]))
+            kind = _KIND_LABELS.get(_asset_kind(data), '资产')
+            detail = kind + (' · ' + ' / '.join(shipped) if shipped else '')
             if resolutions:
                 detail += ' · ' + '/'.join(resolutions).upper()
             preview, preview_label = '', '资产包未包含模型缩略图'
@@ -58,6 +62,25 @@ def describe_zip(path, preview_directory=None):
                     'preview': preview, 'preview_label': preview_label}
     except Exception as error:
         return {'title': Path(path).stem, 'detail': '无法识别', 'error': str(error), 'asset_id': ''}
+
+
+_KIND_LABELS = {'3d': '3D 资产', '3dplant': '植物', 'surface': '表面材质', 'decal': '贴花',
+                'atlas': '图集', 'imperfection': '瑕疵贴图', 'brush': '笔刷'}
+_ASSET_TYPES = {'3d asset': '3d', '3d plant': '3dplant', 'surface': 'surface', 'decal': 'decal',
+                'atlas': 'atlas', 'imperfection': 'imperfection', 'brush': 'brush'}
+
+
+def _asset_kind(data):
+    """Same rule as core.fab_package.asset_kind (kept here so this module has no Blender-side imports)."""
+    sem = data.get('semanticTags') if isinstance(data.get('semanticTags'), dict) else {}
+    declared = str(sem.get('asset_type', '')).strip().lower()
+    if declared in _ASSET_TYPES:
+        return _ASSET_TYPES[declared]
+    cats = [str(c).lower() for c in data.get('categories', []) if isinstance(c, str)]
+    for key, kind in (('3dplant', '3dplant'), ('brush', 'brush'), ('decals', 'decal'), ('imperfections', 'imperfection')):
+        if key in cats:
+            return kind
+    return cats[0] if cats and cats[0] in _KIND_LABELS else '3d'
 
 
 def downloads_directory():

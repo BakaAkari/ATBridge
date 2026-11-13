@@ -58,6 +58,13 @@ class AssetData:
     
     # 工作流
     pbr_workflow: str = 'metalness'
+
+    # Fab 包信息
+    variants: List[dict] = field(default_factory=list)   # plants: [{'name', 'lods': {'0': path}}]
+    gltf: Optional[str] = None
+    physical_size: Optional[Tuple[float, float]] = None   # metres, texture-only packages
+    displacement_height: Optional[float] = None           # metres of relief
+    resolution: Optional[int] = None
     
     # 分类
     category: str = ''
@@ -133,6 +140,11 @@ class AssetParser:
             categories=data.get('categories', []),
             tags=data.get('tags', []),
             apply_to_selection=data.get('applyToSelection', False),
+            variants=data.get('variants') or [],
+            gltf=data.get('gltf'),
+            physical_size=tuple(data['physicalSize']) if data.get('physicalSize') else None,
+            displacement_height=data.get('displacementHeight'),
+            resolution=data.get('resolution'),
         )
         
         # 特殊资产检测

@@ -82,23 +82,40 @@ class FabFilesTest(unittest.TestCase):
                 archive.writestr('asset.json', json.dumps({
                     'id': 'rock-01', 'name': 'Weathered Rock',
                     'models': [{'uri': 'rock.fbx'}], 'maps': []}))
+                archive.writestr('rock.fbx', b'fbx')
             result = fab_files.describe_zip(path)
             self.assertEqual(result['title'], 'Weathered Rock')
-            self.assertEqual(result['detail'], 'FBX')
+            self.assertEqual(result['detail'], '3D 资产 · FBX')
             self.assertEqual(result['asset_id'], 'rock-01')
             self.assertEqual(result['error'], '')
 
     def test_describe_zip_reports_unsupported_model_formats_including_abc(self):
-        for extension in ('gltf', 'abc'):
-            with self.subTest(extension=extension), tempfile.TemporaryDirectory() as directory:
-                path = Path(directory) / f'unsupported-{extension}.zip'
+        # Only an unsupported model format is shipped.
+        for name, extra in (('abc', {'rock.abc': b'abc'}), ('usdz', {'rock.usdz': b'usdz'})):
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / f'unsupported-{name}.zip'
                 with zipfile.ZipFile(path, 'w') as archive:
                     archive.writestr('asset.json', json.dumps({
                         'id': 'rock-01', 'name': 'Rock',
-                        'models': [{'uri': f'rock.{extension}'}], 'maps': []}))
+                        'models': [{'uri': 'rock.fbx'}], 'maps': []}))
+                    for member, data in extra.items():
+                        archive.writestr(member, data)
                 result = fab_files.describe_zip(path)
                 self.assertIn('不支持', result['error'])
                 self.assertEqual(result['asset_id'], '')
+
+    def test_describe_zip_accepts_gltf_and_reports_kind(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'fern_ue_low.zip'
+            with zipfile.ZipFile(path, 'w') as archive:
+                archive.writestr('fern.json', json.dumps({
+                    'id': 'fern01', 'semanticTags': {'asset_type': '3D plant', 'name': 'Fern'},
+                    'models': [{'uri': 'fern_LOD0.fbx'}], 'maps': [{'uri': 'fern_1K_Albedo.jpg'}]}))
+                archive.writestr('fern_tier_3.gltf', b'{}')
+                archive.writestr('Textures/T_fern01_1K_B.jpg', b'jpg')
+            result = fab_files.describe_zip(path)
+            self.assertEqual(result['error'], '')
+            self.assertEqual(result['detail'], '植物 · GLTF · 1K')
 
     def test_describe_zip_falls_back_to_humanized_zip_filename(self):
         with tempfile.TemporaryDirectory() as directory:
