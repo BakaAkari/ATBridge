@@ -16,7 +16,6 @@ from .node_layout import FRAME_TAG, OWNED_TAG, ROLE_TAG, layout_material
 from ..compat.blender_compat import BlenderCompat
 from ..config import BridgeConfig
 from ..utils.logger import ATBridgeLogger as log
-from ..utils.translation import get_text
 
 # Channel order follows the Principled BSDF input order, top to bottom.
 CHANNEL_ORDER = ['color', 'metallic', 'roughness', 'opacity', 'transmission', 'translucency', 'sheen',
@@ -264,7 +263,8 @@ class MaterialBuilder:
     def _layout(self) -> None:
         channels = [{'key': key, 'to_output': key == 'displacement', **self.channels[key]}
                     for key in CHANNEL_ORDER if key in self.channels]
-        labels = {key: get_text(text) for key, text in CHANNEL_LABELS.items()}
+        # Frame labels are saved in the .blend and do not follow UI language changes.
+        labels = CHANNEL_LABELS
         layout_material(self.mat.node_tree, self.bsdf_node, self.output_node, channels,
                         self.mapping_nodes or None, labels,
                         move_shader=self.owns_shader, move_output=self.owns_output,

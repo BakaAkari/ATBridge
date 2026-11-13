@@ -344,6 +344,21 @@ class ATB_OT_fab_local(bpy.types.Operator):
             return {'CANCELLED'}
 
 
+class ATB_OT_fab_hint(bpy.types.Operator):
+    """Display contextual information without adding permanent panel text."""
+    bl_idname = 'atb.fab_hint'
+    bl_label = 'Asset information'
+    bl_options = {'INTERNAL'}
+    message: bpy.props.StringProperty(options={'SKIP_SAVE'})
+
+    @classmethod
+    def description(cls, context, properties):
+        return properties.message
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+
 class ATB_UL_fab_local(bpy.types.UIList):
     def filter_items(self, context, data, propname):
         query = data.query.casefold().strip()
@@ -354,7 +369,7 @@ class ATB_UL_fab_local(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row()
         row.label(text=item.title or item.name,
-                  icon='ERROR' if item.error or item.last_error else ('CHECKMARK' if item.imported else 'PACKAGE'), translate=False)
+                  icon='ERROR' if item.error or item.last_error else 'PACKAGE', translate=False)
 
 
 class ATB_PT_fab_local(bpy.types.Panel):
@@ -389,13 +404,6 @@ class ATB_PT_fab_local(bpy.types.Panel):
             if not state.auto_scan:
                 lines(layout, tr('自动检测已关闭，请在资产栏手动刷新。'))
             layout.separator()
-
-        if state.status:
-            box = layout.box()
-            box.alert = state.failed
-            lines(box, message_text(state.status, context))
-            if not state.failed and state.result_count:
-                button(box, 'locate', tr('选中并查看导入对象'), 'VIEWZOOM')
 
         if state.workspace == 'SETTINGS':
             layout.use_property_split = True
@@ -446,33 +454,42 @@ class ATB_PT_fab_local(bpy.types.Panel):
                     and (not state.query.strip() or state.query.casefold().strip() in
                          (state.files[state.index].title + state.files[state.index].name).casefold())):
                 item = state.files[state.index]
-                box = layout.box()
+                heading = layout.row(align=True)
+                heading.label(text=item.title or item.name, translate=False)
+                heading.operator('atb.fab_hint', text='', icon='INFO', emboss=False).message = (
+                    (item.title or item.name) + '\n' + message_text(item.detail, context) + ' · ' + item.size_label
+                    + ('\n\n' + message_text(item.quality_hint, context) if item.quality_hint else ''))
                 if item.preview_icon:
-                    preview = box.row()
+                    image_box = layout.box()
+                    preview = image_box.row()
                     preview.alignment = 'CENTER'
-                    preview.template_icon(icon_value=item.preview_icon, scale=5)
-                elif not item.error:
-                    box.label(text=tr('暂无商品图'), icon='IMAGE_DATA')
-                lines(box, item.title or item.name)
-                lines(box, message_text(item.detail, context) + ' · ' + item.size_label)
+                    available = context.region.width / max(context.preferences.system.ui_scale, 0.5) - 64
+                    preview.template_icon(icon_value=item.preview_icon, scale=max(5, min(11, available / 20)))
+
+                # Keep the image canvas, facts and actions in separate layout groups.
+                facts = layout.box()
+                details = message_text(item.detail, context).split(' · ')
+                for label, value in ((tr('类型'), details[0]),
+                                     (tr('规格'), ' · '.join(details[1:])),
+                                     (tr('大小'), item.size_label)):
+                    if value:
+                        field = facts.split(factor=0.26)
+                        field.label(text=label, translate=False)
+                        field.label(text=value, translate=False)
+                actions = layout.column(align=True)
                 if item.error:
-                    box.alert = True
-                    lines(box, message_text(item.error, context))
-                    lines(box, tr('请在 Fab 选择含 Megascans 元数据的模型或材质 ZIP。'))
+                    error = actions.row()
+                    error.alert = True
+                    error.operator('atb.fab_hint', text='', icon='ERROR', emboss=False).message = message_text(item.error, context)
                 else:
-                    if item.quality_hint:
-                        box.separator()
-                        hint = box.column(align=True)
-                        hint.label(text=tr('下载品质提示'), icon='INFO')
-                        lines(hint, message_text(item.quality_hint, context))
                     if item.last_error:
-                        lines(box, message_text(item.last_error, context))
-                    box.label(text=tr('曾导入过 · 再次导入会创建副本') if item.imported else tr('元数据已识别 · 可尝试导入'),
-                              icon='CHECKMARK' if item.imported else 'IMPORT')
-                    row = box.row()
+                        error = actions.row(align=True)
+                        error.alert = True
+                        error.operator('atb.fab_hint', text='', icon='ERROR', emboss=False).message = message_text(item.last_error, context)
+                    row = actions.row()
                     row.scale_y = 1.5
-                    button(row, 'import', tr('重试导入') if item.last_error else (tr('再次导入副本') if item.imported else tr('导入到场景')), 'IMPORT')
-                row = box.row(align=True)
+                    button(row, 'import', tr('导入到场景'), 'IMPORT')
+                row = actions.row(align=True)
                 button(row, 'reveal', tr('显示文件'), 'FILE_FOLDER')
                 source = row.row(align=True)
                 source.enabled = bool(item.listing_url)
@@ -483,7 +500,7 @@ class ATB_PT_fab_local(bpy.types.Panel):
         button(row, 'folder', tr('下载目录'), 'FILE_FOLDER')
 
 
-_CLASSES = (ATB_FabLocalFile, ATB_FabLocalState, ATB_OT_fab_local, ATB_UL_fab_local, ATB_PT_fab_local)
+_CLASSES = (ATB_FabLocalFile, ATB_FabLocalState, ATB_OT_fab_local, ATB_OT_fab_hint, ATB_UL_fab_local, ATB_PT_fab_local)
 
 
 def register():

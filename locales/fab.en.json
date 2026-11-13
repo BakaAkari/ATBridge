@@ -180,5 +180,8 @@
   "场景维护": "Scene maintenance",
   "模拟设置": "Simulation Settings",
   "开始模拟": "Start simulation",
-  "模拟中 · 按 ESC 应用结果": "Simulating · ESC to apply"
+  "模拟中 · 按 ESC 应用结果": "Simulating · ESC to apply",
+  "类型": "Type",
+  "规格": "Format",
+  "大小": "Size"
 }

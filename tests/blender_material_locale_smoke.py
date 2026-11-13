@@ -6,7 +6,8 @@ import bpy
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT.parent))
 from ATBridge.core.asset_parser import AssetData
-from ATBridge.core.material_builder import MaterialBuilder
+from ATBridge.core.material_builder import MaterialBuilder, CHANNEL_LABELS
+from ATBridge.core.node_layout import FRAME_TAG
 
 bpy.context.preferences.use_preferences_save = False
 bpy.context.preferences.view.language = 'zh_HANS'
@@ -41,4 +42,16 @@ material.node_tree.nodes.clear()
 recovered = MaterialBuilder(asset)
 recovered.build()
 assert recovered.bsdf_node and recovered.output_node.inputs['Surface'].is_linked
+
+# Persisted frame captions must stay English even when new Blender data names are Chinese.
+surface = AssetData(id='locale-frames', name='Locale Frames', type='surface', path=None)
+captions = []
+for language in ('zh_HANS', 'en_US'):
+    bpy.context.preferences.view.language = language
+    framed = MaterialBuilder(surface).build()
+    frames = [n for n in framed.node_tree.nodes if n.bl_idname == 'NodeFrame' and FRAME_TAG in n]
+    assert frames, 'Surface mapping frame missing'
+    assert [n.label for n in frames] == [CHANNEL_LABELS['mapping']], 'Persisted frame label was translated'
+    captions.append([n.label for n in frames])
+assert captions[0] == captions[1], 'Frame captions changed with UI language'
 print('PASS: Chinese/renamed nodes, stable reuse, active shader selection, inactive branch preservation and missing-node recovery')
