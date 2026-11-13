@@ -64,7 +64,7 @@ def main():
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(b'''<!doctype html><title>ATBridge popup probe</title>
-                    <h1>Popup fixture</h1><a id="download" href="/fixture.zip" download>Download</a>
+                    <h1>Popup fixture</h1><a id="download" href="/fixture.zip">Download</a>
                     <script>
                     setTimeout(() => document.querySelector('#download').click(), 100);
                     setTimeout(() => fetch('/close-requested').then(() => window.close()), 1000);

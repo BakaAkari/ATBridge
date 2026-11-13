@@ -163,5 +163,22 @@
   "贴花": "Decal",
   "图集": "Atlas",
   "瑕疵贴图": "Imperfection",
-  "笔刷": "Brush"
+  "笔刷": "Brush",
+  "浏览": "Browse",
+  "设置": "Settings",
+  "工作区": "Workspace",
+  "从 Fab 获取资产": "Get assets from Fab",
+  "选择 Megascans ZIP，下载后在“资产”栏导入。": "Choose a Megascans ZIP, then import it from the Asset tab.",
+  "下载完成后自动出现在资产栏。": "Downloads appear in the Asset tab automatically.",
+  "自动检测已关闭，请在资产栏手动刷新。": "Auto-detect is off. Refresh the Asset tab manually.",
+  "下载与缓存": "Downloads and cache",
+  "选择 ZIP…": "Select ZIP…",
+  "商品图缓存": "Image cache",
+  "暂无商品图": "No product image",
+  "查看商品页": "Product page",
+  "网格处理": "Mesh tools",
+  "场景维护": "Scene maintenance",
+  "模拟设置": "Simulation Settings",
+  "开始模拟": "Start simulation",
+  "模拟中 · 按 ESC 应用结果": "Simulating · ESC to apply"
 }

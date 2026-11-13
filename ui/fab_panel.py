@@ -106,6 +106,7 @@ def _apply(state, rows):
         item.title, item.detail, item.error = info['title'], info['detail'], info['error']
         item.preview_label = info.get('preview_label', '')
         item.quality_hint = info.get('quality_hint', '')
+        item.listing_url = info.get('listing_url', '')
         if _previews is not None and info.get('preview'):
             try:
                 preview_key = info.get('preview_token', key)
@@ -205,6 +206,7 @@ class ATB_FabLocalFile(bpy.types.PropertyGroup):
     preview_icon: bpy.props.IntProperty()
     preview_label: bpy.props.StringProperty()
     quality_hint: bpy.props.StringProperty()
+    listing_url: bpy.props.StringProperty()
 
 
 def wrap_display(text, width):
@@ -245,6 +247,11 @@ class ATB_FabLocalState(bpy.types.PropertyGroup):
     failed: bpy.props.BoolProperty()
     result_count: bpy.props.IntProperty()
     auto_scan: bpy.props.BoolProperty(name='Auto-detect downloads', default=True)
+    workspace: bpy.props.EnumProperty(name='Workspace', items=(
+        ('BROWSE', 'Browse', 'Browse Fab assets'),
+        ('ASSETS', 'Asset', 'Downloaded assets'),
+        ('SETTINGS', 'Settings', 'Download and cache settings'),
+    ), default='ASSETS')
     settings: bpy.props.BoolProperty(name='Settings and other options', default=False)
     query: bpy.props.StringProperty(name='Search assets', options={'TEXTEDIT_UPDATE'})
     show_unsupported: bpy.props.BoolProperty(name='Show unsupported ZIPs', default=False)
@@ -298,6 +305,9 @@ class ATB_OT_fab_local(bpy.types.Operator):
             elif self.action == 'reveal':
                 item = state.files[state.index]
                 subprocess.Popen(['explorer.exe', '/select,', str(Path(item.path))])
+            elif self.action == 'source':
+                if 0 <= state.index < len(state.files) and state.files[state.index].listing_url:
+                    webbrowser.open(state.files[state.index].listing_url)
             elif self.action == 'refresh':
                 # Explicit refresh also supports background scripts; never overlap cache mutation.
                 if bpy.app.background and (_future is None or _future[0].done()):
@@ -349,7 +359,7 @@ class ATB_UL_fab_local(bpy.types.UIList):
 
 
 class ATB_PT_fab_local(bpy.types.Panel):
-    bl_label = 'Fab Assets'
+    bl_label = 'ATBridge'
     bl_idname = 'ATB_PT_fab_local'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -368,70 +378,39 @@ class ATB_PT_fab_local(bpy.types.Panel):
         def button(parent, action, text, icon='NONE'):
             parent.operator('atb.fab_local', text=text, icon=icon, translate=False).action = action
 
-        row = layout.row()
-        row.scale_y = 1.4
-        button(row, 'browser' if sys.platform == 'win32' else 'website', tr('浏览 Fab 资产'), 'WORLD')
-        layout.label(text=tr('下载完成后自动出现在下方'), icon='INFO')
-        if hasattr(bpy.types, 'ATB_OT_dev_reload'):
-            layout.operator('atb.dev_reload', text=tr('重载插件 · 开发模式'), icon='FILE_REFRESH')
+        tabs = layout.row(align=True)
+        tabs.scale_y = 1.2
+        tabs.prop(state, 'workspace', expand=True)
         layout.separator()
-        row = layout.row()
-        supported = sum(not x.error for x in state.files)
-        row.label(text=tr('最近资产 · %d') % supported)
-        button(row, 'refresh', '', 'FILE_REFRESH')
-        if state.scan_error:
-            box = layout.box()
-            box.alert = True
-            lines(box, message_text(state.scan_error, context))
-            box.prop(state, 'settings', text=tr('打开设置'))
-        elif not supported and not state.show_unsupported:
-            box = layout.box()
-            box.label(text=tr('等待你的第一个资产'), icon='PACKAGE')
-            lines(box, tr('在 Fab 下载 Megascans ZIP，或选择电脑上的资产包。'))
-        if state.files and (supported or state.show_unsupported):
-            layout.prop(state, 'query', text='', icon='VIEWZOOM')
-            layout.template_list('ATB_UL_fab_local', '', state, 'files', state, 'index', rows=5)
-            if (0 <= state.index < len(state.files)
-                    and (state.show_unsupported or not state.files[state.index].error)
-                    and (not state.query.strip() or state.query.casefold().strip() in
-                         (state.files[state.index].title + state.files[state.index].name).casefold())):
-                item = state.files[state.index]
-                box = layout.box()
-                lines(box, item.title)
-                if item.preview_icon:
-                    box.template_icon(icon_value=item.preview_icon, scale=6)
-                    lines(box, message_text(item.preview_label, context))
-                elif not item.error:
-                    lines(box, tr('暂无商品图；在新版独立窗口浏览对应商品页可补齐。'))
-                box.label(text=message_text(item.detail, context) + ' · ' + item.size_label)
-                if item.error:
-                    box.alert = True
-                    lines(box, message_text(item.error, context))
-                    lines(box, tr('请在 Fab 选择含 Megascans 元数据的模型或材质 ZIP。'))
-                else:
-                    if item.quality_hint:
-                        hint = box.column(align=True)
-                        hint.label(text=tr('下载品质提示'), icon='INFO')
-                        lines(hint, message_text(item.quality_hint, context))
-                    if item.last_error:
-                        lines(box, message_text(item.last_error, context))
-                    box.label(text=tr('曾导入过 · 再次导入会创建副本') if item.imported else tr('元数据已识别 · 可尝试导入'),
-                              icon='CHECKMARK' if item.imported else 'IMPORT')
-                    row = box.row()
-                    row.scale_y = 1.3
-                    button(row, 'import', tr('重试导入') if item.last_error else (tr('再次导入副本') if item.imported else tr('导入到场景')), 'IMPORT')
-                button(box, 'reveal', tr('在文件夹中显示'), 'FILE_FOLDER')
-        layout.operator('atb.import_zip', text=tr('从电脑选择 ZIP…'), icon='FILEBROWSER')
+
         if state.status:
             box = layout.box()
             box.alert = state.failed
             lines(box, message_text(state.status, context))
             if not state.failed and state.result_count:
                 button(box, 'locate', tr('选中并查看导入对象'), 'VIEWZOOM')
-        layout.separator()
-        layout.prop(state, 'settings', icon='TRIA_DOWN' if state.settings else 'TRIA_RIGHT', emboss=False)
-        if state.settings:
+
+        if state.workspace == 'BROWSE':
+            intro = layout.column(align=True)
+            intro.label(text=tr('从 Fab 获取资产'), icon='WORLD')
+            lines(intro, tr('选择 Megascans ZIP，下载后在“资产”栏导入。'))
+            layout.separator()
+            row = layout.row()
+            row.scale_y = 1.6
+            button(row, 'browser' if sys.platform == 'win32' else 'website', tr('浏览 Fab 资产'), 'WORLD')
+            layout.separator()
+            row = layout.row(align=True)
+            row.operator('atb.import_zip', text=tr('选择 ZIP…'), icon='FILEBROWSER')
+            button(row, 'folder', tr('下载目录'), 'FILE_FOLDER')
+            layout.separator()
+            lines(layout, tr('下载完成后自动出现在资产栏。') if state.auto_scan else tr('自动检测已关闭，请在资产栏手动刷新。'))
+            return
+
+        if state.workspace == 'SETTINGS':
+            layout.use_property_split = True
+            layout.use_property_decorate = False
             box = layout.box()
+            box.label(text=tr('下载与缓存'), icon='PREFERENCES')
             box.prop(state, 'auto_scan')
             box.prop(state, 'show_unsupported')
             prefs = get_addon_preferences(context)
@@ -443,11 +422,75 @@ class ATB_PT_fab_local(bpy.types.Panel):
                 if running:
                     lines(box, tr('关闭独立窗口后可修改下载目录。当前接收：') + str(_download_folder(context)))
                 box.prop(prefs, 'fab_assets_path', text=tr('解压缓存'))
-            button(box, 'website', tr('用普通浏览器打开 Fab'), 'URL')
-            button(box, 'folder', tr('打开下载目录'), 'FILE_FOLDER')
-            button(box, 'preview_cache', tr('打开商品图缓存'), 'IMAGE_DATA')
-            lines(box, tr('商品图独立存于 LocalAppData/ATBridge/Cache/Fab；90 天过期，上限 256 MiB。'))
-            lines(box, tr('仅显示最近 20 个 ZIP。缓存留空即可；材质引用缓存文件，请勿随意删除。'))
+            row = box.row(align=True)
+            button(row, 'folder', tr('下载目录'), 'FILE_FOLDER')
+            button(row, 'preview_cache', tr('商品图缓存'), 'IMAGE_DATA')
+            layout.separator()
+            lines(layout, tr('仅显示最近 20 个 ZIP。缓存留空即可；材质引用缓存文件，请勿随意删除。'))
+            lines(layout, tr('商品图独立存于 LocalAppData/ATBridge/Cache/Fab；90 天过期，上限 256 MiB。'))
+            layout.separator()
+            button(layout, 'website', tr('用普通浏览器打开 Fab'), 'URL')
+            if hasattr(bpy.types, 'ATB_OT_dev_reload'):
+                layout.operator('atb.dev_reload', text=tr('重载插件 · 开发模式'), icon='FILE_REFRESH')
+            return
+
+        row = layout.row()
+        supported = sum(not x.error for x in state.files)
+        row.label(text=tr('最近资产 · %d') % supported)
+        button(row, 'refresh', '', 'FILE_REFRESH')
+        if state.scan_error:
+            box = layout.box()
+            box.alert = True
+            lines(box, message_text(state.scan_error, context))
+            box.prop_enum(state, 'workspace', 'SETTINGS', text=tr('打开设置'))
+        elif not supported and not state.show_unsupported:
+            box = layout.box()
+            box.label(text=tr('等待你的第一个资产'), icon='PACKAGE')
+            lines(box, tr('在 Fab 下载 Megascans ZIP，或选择电脑上的资产包。'))
+            box.prop_enum(state, 'workspace', 'BROWSE', text=tr('浏览 Fab 资产'), icon='WORLD')
+        if state.files and (supported or state.show_unsupported):
+            layout.prop(state, 'query', text='', icon='VIEWZOOM')
+            layout.template_list('ATB_UL_fab_local', '', state, 'files', state, 'index', rows=3)
+            if (0 <= state.index < len(state.files)
+                    and (state.show_unsupported or not state.files[state.index].error)
+                    and (not state.query.strip() or state.query.casefold().strip() in
+                         (state.files[state.index].title + state.files[state.index].name).casefold())):
+                item = state.files[state.index]
+                box = layout.box()
+                if item.preview_icon:
+                    preview = box.row()
+                    preview.alignment = 'CENTER'
+                    preview.template_icon(icon_value=item.preview_icon, scale=5)
+                elif not item.error:
+                    box.label(text=tr('暂无商品图'), icon='IMAGE_DATA')
+                lines(box, item.title or item.name)
+                lines(box, message_text(item.detail, context) + ' · ' + item.size_label)
+                if item.error:
+                    box.alert = True
+                    lines(box, message_text(item.error, context))
+                    lines(box, tr('请在 Fab 选择含 Megascans 元数据的模型或材质 ZIP。'))
+                else:
+                    if item.quality_hint:
+                        box.separator()
+                        hint = box.column(align=True)
+                        hint.label(text=tr('下载品质提示'), icon='INFO')
+                        lines(hint, message_text(item.quality_hint, context))
+                    if item.last_error:
+                        lines(box, message_text(item.last_error, context))
+                    box.label(text=tr('曾导入过 · 再次导入会创建副本') if item.imported else tr('元数据已识别 · 可尝试导入'),
+                              icon='CHECKMARK' if item.imported else 'IMPORT')
+                    row = box.row()
+                    row.scale_y = 1.5
+                    button(row, 'import', tr('重试导入') if item.last_error else (tr('再次导入副本') if item.imported else tr('导入到场景')), 'IMPORT')
+                row = box.row(align=True)
+                button(row, 'reveal', tr('显示文件'), 'FILE_FOLDER')
+                source = row.row(align=True)
+                source.enabled = bool(item.listing_url)
+                button(source, 'source', tr('查看商品页'), 'URL')
+        layout.separator()
+        row = layout.row(align=True)
+        row.operator('atb.import_zip', text=tr('选择 ZIP…'), icon='FILEBROWSER')
+        button(row, 'folder', tr('下载目录'), 'FILE_FOLDER')
 
 
 _CLASSES = (ATB_FabLocalFile, ATB_FabLocalState, ATB_OT_fab_local, ATB_UL_fab_local, ATB_PT_fab_local)

@@ -61,12 +61,13 @@ sealed partial class BrowserWindow : Form
     readonly FabPreviewCache previewCache;
     readonly System.Windows.Forms.Timer previewTimer = new() { Interval = 4000 };
     bool cachingPreview;
+    ProductPage? lastProductPage;
     readonly HashSet<CoreWebView2DownloadOperation> active = new();
     readonly HashSet<CoreWebView2DownloadOperation> allActive = new();
     readonly FlowLayoutPanel downloadList = new() { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown,
         WrapContents = false, AutoScroll = true, Padding = new Padding(10) };
     CoreWebView2Environment? environment;
-    bool pageLoaded, pageClosePending;
+    bool pageLoaded, pageClosePending, navigationHasContent;
     ulong currentNavigation;
 
     public BrowserWindow(string profile, string downloads, string initialUrl, string? probeReport = null,
@@ -132,7 +133,12 @@ sealed partial class BrowserWindow : Form
         {
             if (!AllowedNavigation(e.Uri)) { e.Cancel = true; Notify(L.T("仅允许 HTTPS 网页。")); return; }
             currentNavigation = e.NavigationId;
+            navigationHasContent = false;
             loading = true; HidePageError(); UpdateNavigation();
+        };
+        web.CoreWebView2.ContentLoading += (_, e) =>
+        {
+            if (e.NavigationId == currentNavigation) navigationHasContent = true;
         };
         web.CoreWebView2.NavigationCompleted += (_, e) =>
         {
@@ -140,7 +146,11 @@ sealed partial class BrowserWindow : Form
             loading = false; UpdateNavigation();
             if (!e.IsSuccess)
             {
-                if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
+                // Attachment navigations abort before committing a document. The existing
+                // page is still usable; do not cover it with our network-error overlay.
+                if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled &&
+                    !(e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionAborted &&
+                      !navigationHasContent && pageLoaded))
                     ShowPageError(L.T("页面未能打开"), L.T("请检查网络连接，再重新加载。技术信息：") + e.WebErrorStatus);
                 return;
             }
@@ -191,7 +201,7 @@ sealed partial class BrowserWindow : Form
             e.Handled = true;
             var operation = e.DownloadOperation;
             // Capture the product at download start, before the user navigates elsewhere.
-            var product = probe ? Task.FromResult<ProductPage?>(null) : probeOwner.ReadProductPage();
+            var product = probe ? Task.FromResult<ProductPage?>(null) : ReadDownloadProduct();
             active.Add(operation);
             probeOwner.allActive.Add(operation);
             var card = probeOwner.AddDownload(name, operation, finalPath, web.Source?.ToString() ?? Program.MegascansUrl);
@@ -220,7 +230,8 @@ sealed partial class BrowserWindow : Form
                     if (!probe) _ = probeOwner.CacheDownloadedProduct(product, card, finalPath);
                     if (probe)
                     {
-                        var passed = pageLoaded && !web.CoreWebView2.Settings.AreHostObjectsAllowed
+                        var passed = pageLoaded && !errorPanel.Visible && !probeOwner.errorPanel.Visible
+                            && !web.CoreWebView2.Settings.AreHostObjectsAllowed
                             && !web.CoreWebView2.Settings.IsWebMessageEnabled;
                         if (pageClosePending && probeOwner != this)
                             FormClosed += (_, _) => probeOwner.FinishProbe(passed, finalPath);
@@ -244,8 +255,17 @@ sealed partial class BrowserWindow : Form
         }
     }
 
+    async Task<ProductPage?> ReadDownloadProduct()
+    {
+        // Downloads may originate in a temporary CDN/popup window with no product DOM.
+        var page = await ReadProductPage();
+        return page ?? (probeOwner != this ? await probeOwner.ReadProductPage() : null);
+    }
+
     async Task<ProductPage?> ReadProductPage()
     {
+        var source = web.Source?.GetLeftPart(UriPartial.Path);
+        ProductPage? Previous() => lastProductPage?.Url == source ? lastProductPage : null;
         try
         {
             if (IsDisposed || web.CoreWebView2 == null) return null;
@@ -256,18 +276,28 @@ sealed partial class BrowserWindow : Form
                   const main = document.querySelector('main');
                   if (!main) return null;
                   const title = (main.querySelector('h1')?.textContent || document.querySelector('meta[property="og:title"]')?.content || '').trim();
-                  if (!title || !document.title.includes(title)) return null;
+                  if (!title) return null;
+                  const officialImage = url => url.startsWith('https://media.fab.com/image_previews/');
                   const image = [...main.querySelectorAll('img')].find(x =>
                     (x.currentSrc || x.src).startsWith('https://media.fab.com/image_previews/gallery_images/') &&
                     x.alt.includes(title));
-                  if (!image) return null;
+                  const socialImage = document.querySelector('meta[property="og:image"]')?.content || '';
+                  const imageUrl = image ? image.currentSrc || image.src : officialImage(socialImage) ? socialImage : '';
+                  if (!imageUrl) return null;
                   const files = [...new Set((main.innerText.match(/[a-zA-Z0-9_.()-]+\.zip\b/g) || []))].slice(0,500);
-                  return {Url:location.origin+location.pathname,Title:title,ImageUrl:image.currentSrc||image.src,Files:files};
+                  return {Url:location.origin+location.pathname,Title:title,ImageUrl:imageUrl,Files:files};
                 })()
                 """).WaitAsync(TimeSpan.FromSeconds(3));
-            return JsonSerializer.Deserialize<ProductPage>(json);
+            var page = JsonSerializer.Deserialize<ProductPage>(json);
+            if (page == null || !FabPreviewCache.ValidPage(page)) return Previous();
+            // A download dialog can disappear before DownloadStarting is raised.
+            // Keep its package names, but only for this exact product listing.
+            if (lastProductPage?.Url == page.Url)
+                page = page with { Files = page.Files.Concat(lastProductPage.Files).Distinct().Take(500).ToArray() };
+            lastProductPage = page;
+            return page;
         }
-        catch (Exception) { return null; }
+        catch (Exception) { return Previous(); }
     }
 
     async Task CacheDownloadedProduct(Task<ProductPage?> product, DownloadCard card, string path)
