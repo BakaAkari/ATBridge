@@ -47,8 +47,24 @@
 
 ### 支持的资产
 
-- 含 Megascans 元数据的 Fab 资产 ZIP：FBX / OBJ 模型和材质（Surface、Decal、Atlas 等）
-- 暂不支持：Alembic（ABC）包、没有 Megascans 元数据的普通 ZIP、单个 ZIP 内包含多个资产
+支持含 Megascans 元数据的 Fab 资产 ZIP，格式可以是 FBX、OBJ 或 glTF：
+
+| 类型 | 导入结果 |
+| --- | --- |
+| 3D 资产 | 模型和材质 |
+| 植物 | 每个变体一个模型，沿 X 轴排开；叶片按不透明度镂空并透光 |
+| 表面、贴花、图集、瑕疵 | 有选中物体时替换它的当前材质槽，否则新建一个按真实扫描尺寸的平面 |
+| 笔刷 | 图像纹理和纹理绘制笔刷 |
+
+- 模型只导入最高精度的 LOD0。LOD 用于游戏引擎，Blender 渲染用不到。
+- 同一资产有多种分辨率时，默认最高使用 4K 贴图。
+- 重新导入到已有材质时，你自己加的节点和连线会保留。
+
+暂不支持：
+
+- **Megascans 树木**（如 European Beech）：Fab 只提供 Unreal Engine 格式（`.uasset`），许可也限定在 UE 中使用，无法在 Blender 中导入。可以用 Blender 自带的 Sapling Tree Gen 或几何节点生成树干，再用 Megascans 的树皮表面和叶片图集制作材质。
+- 只提供 Alembic（ABC）、USD 或 .blend 的包。
+- 没有 Megascans 元数据的普通 ZIP，以及一个 ZIP 里有多个资产。
 
 不支持的包默认不显示，可以在 **设置与其他入口** 里勾选 **显示不支持的 ZIP** 查看原因。
 

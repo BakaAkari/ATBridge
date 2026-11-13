@@ -47,8 +47,24 @@ Without the built-in browser: download the ZIP in any browser, then select it in
 
 ### Supported assets
 
-- Fab asset ZIPs with Megascans metadata: FBX / OBJ models and materials (Surface, Decal, Atlas, …)
-- Not supported yet: Alembic (ABC) packages, ZIPs without Megascans metadata, several assets in one ZIP
+Fab asset ZIPs with Megascans metadata, in FBX, OBJ or glTF:
+
+| Type | Result |
+| --- | --- |
+| 3D asset | Model and material |
+| Plant | One model per variant, laid out along X; leaves are cut out by opacity and let light through |
+| Surface, decal, atlas, imperfection | Replaces the active material slot of the selected object, or creates a plane at the real scanned size |
+| Brush | Image texture and texture-paint brush |
+
+- Only the highest-detail LOD0 is imported. LODs are for game engines; Blender renders don't need them.
+- When an asset ships several resolutions, textures are capped at 4K by default.
+- Re-importing onto an existing material keeps the nodes and links you added.
+
+Not supported:
+
+- **Megascans trees** (e.g. European Beech): Fab ships them only in Unreal Engine format (`.uasset`), licensed for use in UE only, so they can't be imported into Blender. Build the tree with Blender's Sapling Tree Gen or Geometry Nodes instead, and use Megascans bark surfaces and leaf atlases for the materials.
+- Packages that ship only Alembic (ABC), USD or .blend.
+- Plain ZIPs without Megascans metadata, and several assets in one ZIP.
 
 Unsupported packages are hidden by default; enable them under **Settings and other options** to see why.
 
