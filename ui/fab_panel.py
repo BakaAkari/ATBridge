@@ -248,7 +248,6 @@ class ATB_FabLocalState(bpy.types.PropertyGroup):
     result_count: bpy.props.IntProperty()
     auto_scan: bpy.props.BoolProperty(name='Auto-detect downloads', default=True)
     workspace: bpy.props.EnumProperty(name='Workspace', items=(
-        ('BROWSE', 'Browse', 'Browse Fab assets'),
         ('ASSETS', 'Asset', 'Downloaded assets'),
         ('SETTINGS', 'Settings', 'Download and cache settings'),
     ), default='ASSETS')
@@ -383,28 +382,20 @@ class ATB_PT_fab_local(bpy.types.Panel):
         tabs.prop(state, 'workspace', expand=True)
         layout.separator()
 
+        if state.workspace == 'ASSETS':
+            row = layout.row()
+            row.scale_y = 1.5
+            button(row, 'browser' if sys.platform == 'win32' else 'website', tr('浏览 Fab 资产'), 'WORLD')
+            if not state.auto_scan:
+                lines(layout, tr('自动检测已关闭，请在资产栏手动刷新。'))
+            layout.separator()
+
         if state.status:
             box = layout.box()
             box.alert = state.failed
             lines(box, message_text(state.status, context))
             if not state.failed and state.result_count:
                 button(box, 'locate', tr('选中并查看导入对象'), 'VIEWZOOM')
-
-        if state.workspace == 'BROWSE':
-            intro = layout.column(align=True)
-            intro.label(text=tr('从 Fab 获取资产'), icon='WORLD')
-            lines(intro, tr('选择 Megascans ZIP，下载后在“资产”栏导入。'))
-            layout.separator()
-            row = layout.row()
-            row.scale_y = 1.6
-            button(row, 'browser' if sys.platform == 'win32' else 'website', tr('浏览 Fab 资产'), 'WORLD')
-            layout.separator()
-            row = layout.row(align=True)
-            row.operator('atb.import_zip', text=tr('选择 ZIP…'), icon='FILEBROWSER')
-            button(row, 'folder', tr('下载目录'), 'FILE_FOLDER')
-            layout.separator()
-            lines(layout, tr('下载完成后自动出现在资产栏。') if state.auto_scan else tr('自动检测已关闭，请在资产栏手动刷新。'))
-            return
 
         if state.workspace == 'SETTINGS':
             layout.use_property_split = True
@@ -447,7 +438,6 @@ class ATB_PT_fab_local(bpy.types.Panel):
             box = layout.box()
             box.label(text=tr('等待你的第一个资产'), icon='PACKAGE')
             lines(box, tr('在 Fab 下载 Megascans ZIP，或选择电脑上的资产包。'))
-            box.prop_enum(state, 'workspace', 'BROWSE', text=tr('浏览 Fab 资产'), icon='WORLD')
         if state.files and (supported or state.show_unsupported):
             layout.prop(state, 'query', text='', icon='VIEWZOOM')
             layout.template_list('ATB_UL_fab_local', '', state, 'files', state, 'index', rows=3)
