@@ -4,6 +4,8 @@
 
 封装 Blender 节点创建逻辑，提供简洁的 API。
 """
+import os
+
 import bpy
 from typing import Tuple, Optional
 
@@ -64,8 +66,7 @@ class NodeFactory:
             贴图节点
         """
         node = self.create_node('ShaderNodeTexImage', location)
-        node.image = bpy.data.images.load(image_path)
-        node.image.colorspace_settings.name = colorspace or BridgeConfig.COLORSPACE_SRGB
+        node.image = self.load_image(image_path, colorspace or BridgeConfig.COLORSPACE_SRGB)
         node.show_texture = True
         
         if projection:
@@ -73,6 +74,23 @@ class NodeFactory:
         
         return node
     
+    @staticmethod
+    def load_image(image_path: str, colorspace: str) -> bpy.types.Image:
+        """
+        Reuse an already loaded image only when it is the same file *and* already uses the
+        wanted color space; never change the color space of an image other materials may use.
+        """
+        target = os.path.normcase(os.path.abspath(image_path))
+        for img in bpy.data.images:
+            if img.source != 'FILE' or not img.filepath:
+                continue
+            if (os.path.normcase(os.path.abspath(bpy.path.abspath(img.filepath))) == target
+                    and img.colorspace_settings.name == colorspace):
+                return img
+        img = bpy.data.images.load(image_path, check_existing=False)
+        img.colorspace_settings.name = colorspace
+        return img
+
     # ============================================
     # 混合节点
     # ============================================

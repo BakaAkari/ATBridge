@@ -53,6 +53,16 @@ class ATBridgeTranslationManager:
             "Toggle Loop": {"en_US": "Toggle Loop", "zh": "切换循环"},
             "Toggle Language": {"en_US": "Toggle Language", "zh": "切换语言"},
             
+            # 材质节点框（导入后的材质分组标签）
+            "UV Mapping": {"en_US": "UV Mapping", "zh": "UV 映射"},
+            "Base Color": {"en_US": "Base Color", "zh": "基础色"},
+            "Metallic": {"en_US": "Metallic", "zh": "金属度"},
+            "Roughness": {"en_US": "Roughness", "zh": "粗糙度"},
+            "Opacity": {"en_US": "Opacity", "zh": "不透明度"},
+            "Transmission": {"en_US": "Transmission", "zh": "透射"},
+            "Normal": {"en_US": "Normal", "zh": "法线"},
+            "Displacement": {"en_US": "Displacement", "zh": "置换"},
+
             # 属性标签
             "Fab Assets Path": {"en_US": "Fab Assets Path", "zh": "Fab资产路径"},
             "Extract Path": {"en_US": "Extract Path", "zh": "解压路径"},

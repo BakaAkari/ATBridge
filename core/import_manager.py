@@ -65,18 +65,21 @@ class ImportManager:
         """
         log.info(f"正在导入: {asset.name} (类型: {asset.type})")
         
-        # 导入几何体
+        # 导入几何体（记录导入前已有的材质和图像，便于清理 FBX/OBJ 自带的数据）
+        materials_before = {m.as_pointer() for m in bpy.data.materials}
+        images_before = {i.as_pointer() for i in bpy.data.images}
         objects, abc_paths = GeometryImporter.import_meshes(asset.meshes)
-        
+
         if asset.meshes and not objects and not abc_paths:
             raise ValueError('No model objects were imported')
 
         # 构建材质
         builder = MaterialBuilder(asset)
         material = builder.build()
-        
+
         # 赋予材质
         self._apply_material(objects, material, asset.type)
+        self._remove_import_leftovers(materials_before, images_before, material)
         
         # 处理特殊资产类型
         if asset.is_scatter and len(objects) > 1:
@@ -104,8 +107,13 @@ class ImportManager:
         """
         for obj in objects:
             if obj.type == 'MESH':
-                obj.active_material = material
-        
+                # Megascans assets use one material; replace every slot the model file created.
+                if obj.material_slots:
+                    for slot in obj.material_slots:
+                        slot.material = material
+                else:
+                    obj.active_material = material
+
         # Surface/Atlas 类型需要为当前激活对象也设置材质
         if asset_type in [BridgeConfig.ASSET_TYPE_SURFACE, 
                           BridgeConfig.ASSET_TYPE_ATLAS]:
@@ -113,7 +121,18 @@ class ImportManager:
             if act_obj and act_obj.type == 'MESH':
                 act_obj.active_material = material
     
-    def _setup_parent(self, asset: AssetData, 
+    @staticmethod
+    def _remove_import_leftovers(materials_before, images_before, keep) -> None:
+        """Delete materials/images that the model importer created and nothing uses any more."""
+        for mat in [m for m in bpy.data.materials if m.as_pointer() not in materials_before]:
+            if mat != keep and mat.users == 0:
+                log.debug(f"移除模型文件自带的未使用材质: {mat.name}")
+                bpy.data.materials.remove(mat)
+        for img in [i for i in bpy.data.images if i.as_pointer() not in images_before]:
+            if img.users == 0:
+                bpy.data.images.remove(img)
+
+    def _setup_parent(self, asset: AssetData,
                      objects: List[bpy.types.Object],
                      parent_type: str) -> None:
         """
