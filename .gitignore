@@ -13,6 +13,8 @@ develop-eggs/
 dist/
 browser/bin/
 browser/obj/
+tests/browser_preview_probe/bin/
+tests/browser_preview_probe/obj/
 downloads/
 eggs/
 .eggs/

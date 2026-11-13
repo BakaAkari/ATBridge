@@ -230,3 +230,20 @@ except RuntimeError:
 assert {n.as_pointer() for n in off.node_tree.nodes} == off_nodes and len(off.node_tree.links) == off_links, \
     'rollback deleted a node tree that had use_nodes off'
 print('PASS: rollback keeps node trees of materials with use_nodes off')
+
+# Fuzz describes fiber coverage; fiber reflection must keep the surface color.
+fuzzy = asset('fixture-fuzz', 'surface', ['albedo', 'ao', 'fuzz'])
+fuzzy_mat = MaterialBuilder(fuzzy).build()
+for _ in range(2):
+    shader = next(n for n in fuzzy_mat.node_tree.nodes if n.bl_idname == 'ShaderNodeBsdfPrincipled')
+    weight = shader.inputs['Sheen Weight'].links[0].from_node
+    assert weight.get('atb_role') == 'tex:fuzz', 'Fuzz coverage was disabled or rescaled'
+    assert weight.image.colorspace_settings.name == 'Non-Color', 'Fuzz mask is not linear'
+    assert shader.inputs['Sheen Tint'].links[0].from_socket == shader.inputs['Base Color'].links[0].from_socket, \
+        'Fuzz reflection lost the surface color'
+    assert MaterialBuilder(fuzzy).build() == fuzzy_mat
+plain_mat = MaterialBuilder(asset('fixture-no-fuzz', 'surface', ['albedo', 'ao'])).build()
+shader = next(n for n in plain_mat.node_tree.nodes if n.bl_idname == 'ShaderNodeBsdfPrincipled')
+assert not shader.inputs['Sheen Weight'].is_linked and not shader.inputs['Sheen Tint'].is_linked, \
+    'Non-fuzzy material gained sheen links'
+print('PASS: colored Fuzz, unchanged coverage, stable rebuild and non-fuzzy material')

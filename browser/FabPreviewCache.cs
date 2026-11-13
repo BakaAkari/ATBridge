@@ -78,7 +78,7 @@ sealed class FabPreviewCache
     {
         // Fab Megascans names put the ID immediately before the quality suffix.
         // Matching arbitrary tokens would confuse IDs with 'raw', 'zip', or title words.
-        var match = Regex.Match(filename, @"(?:^|_)(?<id>[a-z0-9]{6,32})_(?:raw|high|mid|medium|low)(?:_\d{1,2}k)?\.zip$",
+        var match = Regex.Match(filename, @"(?:^|_)(?<id>[a-z0-9]{6,32})_(?:(?:gltf|ue|exr)_)?(?:raw|high|mid|medium|low)(?:_\d{1,2}k)?\.zip$",
             RegexOptions.IgnoreCase);
         return match.Success && string.Equals(match.Groups["id"].Value, id, StringComparison.OrdinalIgnoreCase);
     }

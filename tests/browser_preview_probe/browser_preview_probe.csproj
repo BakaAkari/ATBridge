@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><DisableWinExeOutputInference>true</DisableWinExeOutputInference>
+    <TargetFramework>net10.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <RootNamespace>ATBridge.FabBrowser</RootNamespace><StartupObject>ATBridge.FabBrowser.PreviewTests</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../browser/*.cs" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <EmbeddedResource Include="../../locales/fab.en.json" LogicalName="ATBridge.Fab.en.json" WithCulture="false" />
+  </ItemGroup>
+  <Target Name="RemoveWpf" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup><Reference Remove="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" /></ItemGroup>
+  </Target>
+</Project>

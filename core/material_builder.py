@@ -311,9 +311,13 @@ class MaterialBuilder:
             self._setup_translucency()
 
         if self.asset.has_texture('fuzz'):
-            # Fabric fuzz drives the sheen layer.
+            # Fuzz is coverage, not a white fiber color. Moss and dyed fibers
+            # scatter their surface color; Principled otherwise defaults to white.
             self._create_connected_texture('fuzz', 'sheen', 'Sheen Weight',
                                            BridgeConfig.COLORSPACE_NON_COLOR)
+            base_color = self.bsdf_node.inputs['Base Color']
+            if base_color.is_linked and self.asset.has_texture('albedo'):
+                self._connect_to_bsdf(base_color.links[0].from_socket, 'Sheen Tint')
 
         if self.asset.has_texture('mask'):
             # Imperfection masks are for layering; keep the map ready but unconnected.

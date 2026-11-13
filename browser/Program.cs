@@ -62,6 +62,7 @@ sealed partial class BrowserWindow : Form
     readonly System.Windows.Forms.Timer previewTimer = new() { Interval = 4000 };
     bool cachingPreview;
     ProductPage? lastProductPage;
+    Task<ProductPage?>? openerProduct;
     readonly HashSet<CoreWebView2DownloadOperation> active = new();
     readonly HashSet<CoreWebView2DownloadOperation> allActive = new();
     readonly FlowLayoutPanel downloadList = new() { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown,
@@ -162,6 +163,8 @@ sealed partial class BrowserWindow : Form
             if (!AllowedNavigation(e.Uri)) return;
             using var deferral = e.GetDeferral();
             var child = new BrowserWindow(profile, downloads, "about:blank", probeReport, probe, probeOwner);
+            // Bind popup downloads to their opener at creation, before it can navigate away.
+            child.openerProduct = ReadDownloadProduct();
             try
             {
                 // The opener and popup share the same environment, including official login state.
@@ -201,7 +204,7 @@ sealed partial class BrowserWindow : Form
             e.Handled = true;
             var operation = e.DownloadOperation;
             // Capture the product at download start, before the user navigates elsewhere.
-            var product = probe ? Task.FromResult<ProductPage?>(null) : ReadDownloadProduct();
+            var product = probe ? Task.FromResult<ProductPage?>(null) : CaptureDownloadProduct(name);
             active.Add(operation);
             probeOwner.allActive.Add(operation);
             var card = probeOwner.AddDownload(name, operation, finalPath, web.Source?.ToString() ?? Program.MegascansUrl);
@@ -259,7 +262,16 @@ sealed partial class BrowserWindow : Form
     {
         // Downloads may originate in a temporary CDN/popup window with no product DOM.
         var page = await ReadProductPage();
-        return page ?? (probeOwner != this ? await probeOwner.ReadProductPage() : null);
+        return page ?? (openerProduct != null ? await openerProduct : null);
+    }
+
+    async Task<ProductPage?> CaptureDownloadProduct(string filename)
+    {
+        var page = await ReadDownloadProduct();
+        // DownloadStarting is evidence of the package actually requested by this
+        // listing, even when its modal has already closed. ZIP metadata is still
+        // checked against this exact filename before a cache association is written.
+        return page == null ? null : page with { Files = page.Files.Prepend(filename).Distinct().Take(500).ToArray() };
     }
 
     async Task<ProductPage?> ReadProductPage()
@@ -284,11 +296,17 @@ sealed partial class BrowserWindow : Form
                   const socialImage = document.querySelector('meta[property="og:image"]')?.content || '';
                   const imageUrl = image ? image.currentSrc || image.src : officialImage(socialImage) ? socialImage : '';
                   if (!imageUrl) return null;
-                  const files = [...new Set((main.innerText.match(/[a-zA-Z0-9_.()-]+\.zip\b/g) || []))].slice(0,500);
+                  // Fab portals its download dialog outside main. The default
+                  // ZBrush tab has no Megascans ID; the dialog has the real ZIPs.
+                  const dialogs = [...document.querySelectorAll('[role="dialog"]')].filter(dialog =>
+                    [...dialog.querySelectorAll('h1,h2,h3,h4,h5,h6')].some(h => h.textContent.trim() === title));
+                  const text = [main.innerText, ...dialogs.map(x => x.innerText)].join('\n');
+                  const files = [...new Set((text.match(/[a-zA-Z0-9_.()-]+\.zip\b/g) || []))].slice(0,500);
                   return {Url:location.origin+location.pathname,Title:title,ImageUrl:imageUrl,Files:files};
                 })()
                 """).WaitAsync(TimeSpan.FromSeconds(3));
             var page = JsonSerializer.Deserialize<ProductPage>(json);
+            if (page != null && page.Url != source) return null;
             if (page == null || !FabPreviewCache.ValidPage(page)) return Previous();
             // A download dialog can disappear before DownloadStarting is raised.
             // Keep its package names, but only for this exact product listing.
